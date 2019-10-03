@@ -27,7 +27,7 @@ MQR <- function(datatable,y,g,covariates=NULL,tau=seq(0.05, 0.95, by=0.05),
     # BOOTSTRAP ERROR ESTIMATES UISNG boot.m
     g.ptm <- proc.time()
     for(i in 1:length(tau)){
-      Q.mod <- tryCatch({rq(FML, tau[i], DT, method=rq_meth)}, error=function(err){
+      Q.mod <- tryCatch({quantreg::rq(FML, tau[i], DT, method=rq_meth)}, error=function(err){
         # print(paste0("rq model fitting at tau=",tau[i]," failed because : ",err))
         return(c("ERROR",paste0("rq(tau=",tau[i],") failed because : ",err[[1]])))})
       if(Q.mod[[1]]=="ERROR"){
@@ -38,7 +38,7 @@ MQR <- function(datatable,y,g,covariates=NULL,tau=seq(0.05, 0.95, by=0.05),
       i.Bs  <- tryCatch({
         bs.M <- boot.m
         set.seed(seed)
-        summary.rq(Q.mod, se="boot", covariance=TRUE, R=boot.R,bsmethod=bs.M)$B},
+        quantreg::summary.rq(Q.mod, se="boot", covariance=TRUE, R=boot.R,bsmethod=bs.M)$B},
         error=function(err){
           return(c("ERROR",paste0("summary.rq(",tau[i],") ",boot.m, " boot failed because : ",
                                   err[[1]])))})
@@ -76,7 +76,7 @@ MQR <- function(datatable,y,g,covariates=NULL,tau=seq(0.05, 0.95, by=0.05),
 
         # BOOTSTRAP ERROR ESTIMATES UISNG boot.m
         for(i in 1:length(tau)){
-          Q.mod <- tryCatch({rq(FML, tau[i], DT, method=rq_meth)}, error=function(err){
+          Q.mod <- tryCatch({quantreg::rq(FML, tau[i], DT, method=rq_meth)}, error=function(err){
             # print(paste0("rq model fitting at tau=",tau[i]," failed because : ",err))
             return(c("ERROR",paste0("rq(tau=",tau[i],") dithered failed because : ",err[[1]])))})
           if(Q.mod[[1]]=="ERROR"){
@@ -87,7 +87,7 @@ MQR <- function(datatable,y,g,covariates=NULL,tau=seq(0.05, 0.95, by=0.05),
           i.Bs  <- tryCatch({
             bs.M <- boot.m
             set.seed(seed)
-            summary.rq(Q.mod, se="boot", covariance=TRUE, R=boot.R,bsmethod=bs.M)$B},
+            quantreg::summary.rq(Q.mod, se="boot", covariance=TRUE, R=boot.R,bsmethod=bs.M)$B},
             error=function(err){
               return(c("ERROR",paste0("summary.rq(",tau[i],") ",boot.m,
                                       " dithered boot failed because : ",err[[1]])))})
@@ -138,12 +138,12 @@ MQR <- function(datatable,y,g,covariates=NULL,tau=seq(0.05, 0.95, by=0.05),
                     LN_tval=LN.sum[g,3],LN_p.value=LN.sum[g,4])
 
     # Add MEDIAN Regression Estimates
-    Q.mod <- tryCatch({rq(FML, tau=0.5, DT,method=rq_meth)},error=function(err){
+    Q.mod <- tryCatch({quantreg::rq(FML, tau=0.5, DT,method=rq_meth)},error=function(err){
       return(c("ERROR",paste0("rq(Median) using ",rq_meth, " , failed because : ",err[[1]])))})
     if(Q.mod[[1]]=="ERROR"){
       Notes <- c(Notes,Q.mod[[2]])
       t.meth <- "br"
-      Q.mod <- tryCatch({rq(FML, tau=0.5, DT,method=t.meth)},error=function(err){
+      Q.mod <- tryCatch({quantreg::rq(FML, tau=0.5, DT,method=t.meth)},error=function(err){
         return(c("ERROR",paste0("rq(Median) using ",t.meth, " , failed because : ",err[[1]])))})
     }
     if(Q.mod[[1]]=="ERROR"){
@@ -154,7 +154,7 @@ MQR <- function(datatable,y,g,covariates=NULL,tau=seq(0.05, 0.95, by=0.05),
       Q.sum  <- tryCatch({
         bs.M <- boot.m
         set.seed(seed)
-        summary.rq(Q.mod, se="boot", covariance=TRUE, R=boot.R, bsmethod=bs.M)},
+        quantreg::summary.rq(Q.mod, se="boot", covariance=TRUE, R=boot.R, bsmethod=bs.M)},
         error=function(err){
           return(c("ERROR",paste0("summary.rq(Median) ",boot.m, " boot failed because : ",err[[1]])))})
       if(Q.sum[[1]]=="ERROR"){
@@ -219,7 +219,7 @@ MQR <- function(datatable,y,g,covariates=NULL,tau=seq(0.05, 0.95, by=0.05),
 
     Models <- lm(FML, DT)
     Beta <- Models$coefficients[2,]
-    COV <- cov.RIF(Models, pred=g)
+    COV <- RIFmod.cov(Models, pred=g)
 
     # re-centred tau
     taus <- tau-0.5
@@ -244,7 +244,7 @@ MQR <- function(datatable,y,g,covariates=NULL,tau=seq(0.05, 0.95, by=0.05),
         RIF <- RIF.Transform(y=DT[,Residual_Dithered_Response], taus=tau) # compute RIF at taus of interest
         Models <- lm(FML, DT)
         Beta <- Models$coefficients[2,]
-        COV <- cov.RIF(Models, pred=g)
+        COV <- RIFmod.cov(Models, pred=g)
         Results <- tryCatch({MetReg.UQR(Beta=Beta, COV=COV, taus=taus)}, error=function(err){
           # print(paste0("MR-UQR failed because : ",err))
           return(c("ERROR",paste0("MR-UQR failed because : ",err[[1]])))})
