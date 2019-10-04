@@ -1,12 +1,13 @@
 
 MQR <- function(datatable,y,g,covariates=NULL,tau=seq(0.05, 0.95, by=0.05),
                 mqr.method="UQR",boot.m="mcmb",boot.R=200,seed=31371,enable.dither=TRUE,
-                Univariable=TRUE){
-  # datatable=Batch.Data;tau=Taus;y=outcome;g=z.SNPs[i];covariates=covariates;seed=i.s
-  # datatable=z.Data;tau=Taus;y=outcome;g="MCQR_geno";
-  # covariates=NULL;seed=Seed
-  # boot.m="mcmb";boot.R=200
-  # datatable=DT;tau=Taus;y="pheno"; g="geno"
+                Univariable=TRUE,fitOLS=TRUE){
+  # datatable=DT;y="response";g="x";tau=seq(0.05,0.95,length.out=10);
+  # mqr.method="UQR";boot.m="mcmb";boot.R=200;seed=31371;enable.dither=TRUE;
+  # Univariable=TRUE;fitOLS=TRUE;covariates=NULL
+  if(y=="y"){
+    stop("The name of your respoonse variable is 'y' please rename it before calling MQR()")
+  }
   if(is.null(covariates)){
     FML  <- as.formula(paste(y,g,sep=" ~ "))
   } else {
@@ -30,7 +31,7 @@ MQR <- function(datatable,y,g,covariates=NULL,tau=seq(0.05, 0.95, by=0.05),
       Q.mod <- tryCatch({quantreg::rq(FML, tau[i], DT, method=rq_meth)}, error=function(err){
         # print(paste0("rq model fitting at tau=",tau[i]," failed because : ",err))
         return(c("ERROR",paste0("rq(tau=",tau[i],") failed because : ",err[[1]])))})
-      if(Q.mod[[1]]=="ERROR"){
+      if(length(Q.mod)==1){
         Notes[i] <- Q.mod[[2]]
         next
       }
@@ -79,7 +80,7 @@ MQR <- function(datatable,y,g,covariates=NULL,tau=seq(0.05, 0.95, by=0.05),
           Q.mod <- tryCatch({quantreg::rq(FML, tau[i], DT, method=rq_meth)}, error=function(err){
             # print(paste0("rq model fitting at tau=",tau[i]," failed because : ",err))
             return(c("ERROR",paste0("rq(tau=",tau[i],") dithered failed because : ",err[[1]])))})
-          if(Q.mod[[1]]=="ERROR"){
+          if(length(Q.mod)==1){
             Notes.2[i] <- Q.mod[[2]]
             next
           }
@@ -133,20 +134,24 @@ MQR <- function(datatable,y,g,covariates=NULL,tau=seq(0.05, 0.95, by=0.05),
     g.etm <- proc.time()-g.ptm
 
     # Add MEAN Regression Estimates on Raw Scale.
-    LN.sum <- coef(summary(lm(FML,DT)))
-    LN.Results <- c(LN_Beta=LN.sum[g,1],LN_SE=LN.sum[g,2],
-                    LN_tval=LN.sum[g,3],LN_p.value=LN.sum[g,4])
+    if(fitOLS){
+      LN.sum <- coef(summary(lm(FML,DT)))
+      LN.Results <- c(LN_Beta=LN.sum[g,1],LN_SE=LN.sum[g,2],
+                      LN_tval=LN.sum[g,3],LN_p.value=LN.sum[g,4])
+    } else {
+      LN.Results <- NULL
+    }
 
     # Add MEDIAN Regression Estimates
     Q.mod <- tryCatch({quantreg::rq(FML, tau=0.5, DT,method=rq_meth)},error=function(err){
       return(c("ERROR",paste0("rq(Median) using ",rq_meth, " , failed because : ",err[[1]])))})
-    if(Q.mod[[1]]=="ERROR"){
+    if(length(Q.mod)==1){
       Notes <- c(Notes,Q.mod[[2]])
       t.meth <- "br"
       Q.mod <- tryCatch({quantreg::rq(FML, tau=0.5, DT,method=t.meth)},error=function(err){
         return(c("ERROR",paste0("rq(Median) using ",t.meth, " , failed because : ",err[[1]])))})
     }
-    if(Q.mod[[1]]=="ERROR"){
+    if(length(Q.mod)==1){
       Notes <- c(Notes,Q.mod[[2]],"MCQR.Median fit failed")
       MEDIAN.Results <- c(MCQR.Median_Beta=NA,MCQR.Median_SE=NA,MCQR.Median_tval=NA,
                           MCQR.Median_p.value=NA)
@@ -194,13 +199,6 @@ MQR <- function(datatable,y,g,covariates=NULL,tau=seq(0.05, 0.95, by=0.05),
     return(Results)
 
   } else if (mqr.method=="UQR"){
-    if(is.null(covariates)){
-      FML  <- as.formula(paste(y,g,sep=" ~ "))
-    } else {
-      covs <- paste(covariates,sep="",collapse=" + ")
-      FML  <- as.formula(paste(paste(y,g,sep=" ~ "),covs,sep=" + "))
-    }
-    DT <- data.table(model.frame(FML, datatable))
     DT[,y:=DT[[y]]]
     g.ptm <- proc.time()
     # Adjust for Median effects of g (i.e. residual scale)
@@ -223,7 +221,7 @@ MQR <- function(datatable,y,g,covariates=NULL,tau=seq(0.05, 0.95, by=0.05),
 
     # re-centred tau
     taus <- tau-0.5
-    Results <- tryCatch({MetReg.UQR(Beta=Beta, COV=COV, taus=taus)}, error=function(err){
+    Results <- tryCatch({MetaReg.UQR(Beta=Beta, COV=COV, taus=taus)}, error=function(err){
       # print(paste0("MR-UQR failed because : ",err))
       return(c("ERROR",paste0("MR-UQR failed because : ",err[[1]])))
     })
@@ -245,7 +243,7 @@ MQR <- function(datatable,y,g,covariates=NULL,tau=seq(0.05, 0.95, by=0.05),
         Models <- lm(FML, DT)
         Beta <- Models$coefficients[2,]
         COV <- RIFmod.cov(Models, pred=g)
-        Results <- tryCatch({MetReg.UQR(Beta=Beta, COV=COV, taus=taus)}, error=function(err){
+        Results <- tryCatch({MetaReg.UQR(Beta=Beta, COV=COV, taus=taus)}, error=function(err){
           # print(paste0("MR-UQR failed because : ",err))
           return(c("ERROR",paste0("MR-UQR failed because : ",err[[1]])))})
         if(Results[[1]]=="ERROR"){
@@ -264,10 +262,15 @@ MQR <- function(datatable,y,g,covariates=NULL,tau=seq(0.05, 0.95, by=0.05),
                              MUQR.Median_tval=RIF.sum[g,3],MUQR.Median_p.value=RIF.sum[g,4])
 
           # Add MEAN Regression Estimates.
-          FML <- as.formula(paste("Dithered_Response",FML[[1]],FML[[3]]))
-          LN.sum <- coef(summary(lm(FML,DT)))
-          LN.Results <- c(LN_Beta=LN.sum[g,1],LN_SE=LN.sum[g,2],
-                          LN_tval=LN.sum[g,3],LN_p.value=LN.sum[g,4])
+          if(fitOLS){
+            FML <- as.formula(paste("Dithered_Response",FML[[1]],FML[[3]]))
+            LN.sum <- coef(summary(lm(FML,DT)))
+            LN.Results <- c(LN_Beta=LN.sum[g,1],LN_SE=LN.sum[g,2],
+                            LN_tval=LN.sum[g,3],LN_p.value=LN.sum[g,4])
+          } else {
+            LN.Results <- NULL
+          }
+
         }
       } else {
         Results <- c(MUQR.MetaTau_Beta=NA,MUQR.MetaTau_SE=NA,MUQR.MetaTau_tval=NA,
@@ -286,11 +289,14 @@ MQR <- function(datatable,y,g,covariates=NULL,tau=seq(0.05, 0.95, by=0.05),
                          MUQR.Median_tval=RIF.sum[g,3],MUQR.Median_p.value=RIF.sum[g,4])
 
       # Add MEAN Regression Estimates.
-      FML <- as.formula(paste(y,FML[[1]],FML[[3]]))
-      LN.sum <- coef(summary(lm(FML,DT)))
-      LN.Results <- c(LN_Beta=LN.sum[g,1],LN_SE=LN.sum[g,2],
-                      LN_tval=LN.sum[g,3],LN_p.value=LN.sum[g,4])
-      # Result <- c(LN.Results,Result,MUQR.TtC=g.etm[[3]])
+      if(fitOLS){
+        FML <- as.formula(paste(y,FML[[1]],FML[[3]]))
+        LN.sum <- coef(summary(lm(FML,DT)))
+        LN.Results <- c(LN_Beta=LN.sum[g,1],LN_SE=LN.sum[g,2],
+                        LN_tval=LN.sum[g,3],LN_p.value=LN.sum[g,4])
+      } else {
+        LN.Results <- NULL
+      }
     }
     g.etm <- proc.time()-g.ptm
     if(length(Notes)>1){
