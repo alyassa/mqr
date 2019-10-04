@@ -1,5 +1,5 @@
 \name{MQR}
-\alias{MQR}
+\alias{mqr}
 \title{
 Meta-Quantile Regression
 }
