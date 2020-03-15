@@ -11,14 +11,13 @@ RIFmod.cov(object, pred)
 }
 
 \arguments{
-  \item{object}{An object of class multivariate lm representing lm models fit using RIF transformed response variable at each quantile
+  \item{object}{An object of class multivariate lm representing lm models fit using RIF transformed response variable at each quantile.}
   \item{pred}{Name (character or string) of the genotype variable (e.g. SNP)}
 }
 \details{
 %%  ~~ If necessary, more details than the description above ~~
 }
-\value{A covariance matrix of tau dimension
-}
+\value{A covariance matrix of tau dimension}
 \references{
 %% ~put references to the literature/web site here ~
 }

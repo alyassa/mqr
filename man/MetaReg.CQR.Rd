@@ -25,8 +25,7 @@ A vector of containing the results of the meta-regression model estimating the e
 \references{
 %% ~put references to the literature/web site here ~
 }
-\author{
-Akram Alyass and Arkan Abadi
+\author{Akram Alyass and Arkan Abadi}
 \note{
 %%  ~~further notes~~
 }

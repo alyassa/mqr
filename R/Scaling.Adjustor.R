@@ -1,14 +1,14 @@
 Scaling.Adjustor <- function(FML,data,weights,model,response,predictor,
-                             method="Iteratively_ReWeighted"){
+                             method="Median_rq"){
   # data=Results
   # browser()
   DT <- copy(data)
   if(missing(model)){
     DT[,w:=1/(DT[[weights]]^2)]
     if(method=="Iteratively_ReWeighted"){
-      Model <- rlm(FML,data=DT,weights=w,method="M",wt.method="inv.var")
+      Model <- MASS::rlm(FML,data=DT,weights=w,method="M",wt.method="inv.var")
     } else if(method=="Median_rq"){
-      Model <- rq(FML,tau=0.5,data=DT,weights=w,method="fn")
+      Model <- quantreg::rq(FML,tau=0.5,data=DT,weights=w,method="fn")
     } else if(method=="ols"){
       Model <- lm(FML,data=DT)
     }

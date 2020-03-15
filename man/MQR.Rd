@@ -1,19 +1,15 @@
 \name{MQR}
 \alias{mqr}
-\title{
-Meta-Quantile Regression
-}
-\description{
-Returns estimates, standard errors, test statistic and p-value from a fitted Meta-Quantile Regression model (specified either conditional or unconditional).
-}
-\usage{
-MQR(datatable,y,g,covariates=NULL,tau=seq(0.05, 0.95, by=0.05),
+\title{Meta-Quantile Regression}
+\description{Returns estimates, standard errors, test statistic and p-value from a fitted Meta-Quantile Regression model (specified either conditional or unconditional).}
+\usage{MQR(datatable,y,g,covariates=NULL,tau=seq(0.05, 0.95, by=0.05),
                 mqr.method="UQR",boot.m="mcmb",boot.R=200,seed=31371,enable.dither=TRUE,
-                Univariable=TRUE)
-}
+                Univariable=TRUE)}
 %- maybe also 'usage' for other objects documented here.
+
+
 \arguments{
-  \item{datatable}{An object of class `data.table` containing the data to be analysed with samples in rows and the dependent variable and all independent variables in columns. Ensure all variables are of the correct class (e.g. `numeric`, `factor`)
+  \item{datatable}{An object of class `data.table` containing the data to be analysed with samples in rows and the dependent variable and all independent variables in columns. Ensure all variables are of the correct class (e.g. `numeric`, `factor`)}
   \item{y}{Name (character or string) of the continuous response variable}
   \item{g}{Name (character or string) of the genotype variable (e.g. SNP)}
   \item{covariates}{Name (character or string) of any additional variables (covariates) to fit the model. NOTE : Additional covariates will impact the genotype results only in CQR. UQR additional covariates will have little impact. Default is NULL}
@@ -28,9 +24,7 @@ MQR(datatable,y,g,covariates=NULL,tau=seq(0.05, 0.95, by=0.05),
 \details{
 %%  ~~ If necessary, more details than the description above ~~
 }
-\value{
-A vector with 4 elements containg the MQR estimate, standard error, t-value and p-value for the effects of genotype g on response y.
-}
+\value{A vector with 4 elements containg the MQR estimate, standard error, t-value and p-value for the effects of genotype g on response y.}
 \references{
 [1] Koenker, R. W. (2005). Quantile Regression, Cambridge U. Press.
 [2] Firpo, S., Fortin, N. M., & Lemieux, T. (2009). Unconditional quantile regressions. Econometrica. http://doi.org/10.3982/ECTA6822
