@@ -13,12 +13,12 @@ Imports:
   data.table (>= 1.12.2),
   quantreg (>= 5.51),
   MASS (>= 7.3-51.4),
-  metafor()
+  metafor(>= 2.0)
 Depends: 
   data.table (>= 1.12.2),
   quantreg (>= 5.51),
   MASS (>= 7.3-51.4),
-  metafor()
+  metafor(>= 2.0)
 RoxygenNote: 6.1.1
 Suggests: 
     testthat
