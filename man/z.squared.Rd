@@ -1,9 +1,8 @@
-\name{Levene}
-\alias{Levene}
-\title{Levene Function}
-\description{This function performs levene test of variance heterogeneity across genotype categories.}
-\usage{Levene(datatable,y,g,covariates=NULL,method="Brown-Forsythe",
-                   log.p=FALSE)}
+\name{z.squared}
+\alias{z.squared}
+\title{z-Squared Function}
+\description{This function fits a model on the z-squared transformed outcome to test variance effects of genotypes.}
+\usage{z.squared(datatable,y,g,covariates=NULL)}
 %- maybe also 'usage' for other objects documented here.
 
 
@@ -12,17 +11,14 @@
   \item{y}{Name (character or string) of the continuous response variable}
   \item{g}{Name (character or string) of the genotype variable (e.g. SNP)}
   \item{covariates}{Name (character or string) of any additional variables (covariates) to fit the model. NOTE : Additional covariates will impact the genotype results only in CQR. UQR additional covariates will have little impact. Default is NULL}
-  \item{method}{Specify 'Classic-Levene' or 'Brown-Forsythe'}
-  \item{log.p}{Specify whether to return log p-value.}
 }
 
 \details{
 %%  ~~ If necessary, more details than the description above ~~
 }
-\value{A vector of containing the results of the levene test of variance heterogeneity of outcome across genotype categories.}
+\value{A vector with 4 elements containing the z-squared estimate, standard error, t-value and p-value for the effects of genotype g on response y.}
 \references{
-[1] Paré, G., Cook, N. R., Ridker, P. M., & Chasman, D. I. (2010). On the use of variance per genotype as a tool to identify quantitative trait interaction effects: a report from the Women's Genome Health Study. PLoS Genetics, 6(6), e1000981. http://doi.org/10.1371/journal.pgen.1000981
-[2] Gauderman, W. J., Zhang, P., Morrison, J. L., & Lewinger, J. P. (2013). Finding novel genes by testing G × E interactions in a genome-wide association study. Genetic Epidemiology, 37(6), 603–613. http://doi.org/10.1002/gepi.21748
+[1] Yang, J., Loos, R. J. F., Powell, J. E., Medland, S. E., Speliotes, E. K., Chasman, D. I., et al. (2012). FTO genotype is associated with phenotypic variability of body mass index. Nature, 490(7419), 267–272. http://doi.org/10.1038/nature11401
 }
 \author{
 Arkan Abadi and Akram Alyass
