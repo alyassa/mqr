@@ -1,8 +1,5 @@
 
-MQR.metafor <- function(datatable,fun1=Stouffer.test,fun2=Fischer.test,
-                        log_p.value=FALSE,Info=TRUE){
-  # datatable=i.Results[SNP==i.SNPs[l]];fun1=Stouffer.test;fun2=Fischer.test;log_p.value=FALSE
-  # colnames(datatable)
+mqr.rma <- function(datatable,log_p.value=FALSE,Info=TRUE){
 
   # SUMMARIZE SNP INFO
   if(Info){

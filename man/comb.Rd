@@ -2,7 +2,7 @@
 \alias{comb}
 %- Also NEED an '\alias' for EACH other topic documented here.
 \title{
-Combine data.tables
+Combine data.table objects
 }
 \description{
 Used to rbind data.tables

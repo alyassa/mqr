@@ -1,5 +1,5 @@
-\name{MetaReg.CQR}
-\alias{MetaReg.CQR}
+\name{mcqr}
+\alias{mcqr}
 %- Also NEED an '\alias' for EACH other topic documented here.
 \title{
 CQR Meta-Regression
@@ -8,7 +8,7 @@ CQR Meta-Regression
 This function fits a meta-regression model of CQR estimates over quantiles. It takes in quantile estimates from CQR models across tau quantiles as well a corresponding matrix of bootstrapped estimates, computes a covariance matrix across tau and fits a metaregression model to estimate linear change in quantile estimates (dependent variable) over tau (independent variable).
 }
 \usage{
-MetaReg.CQR(Beta,boot.Bs,test="z")
+mcqr(Beta,boot.Bs,test="z")
 }
 %- maybe also 'usage' for other objects documented here.
 \arguments{

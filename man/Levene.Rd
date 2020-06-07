@@ -1,8 +1,8 @@
-\name{Levene}
-\alias{Levene}
+\name{levene}
+\alias{levene}
 \title{Levene Function}
 \description{This function performs levene test of variance heterogeneity across genotype categories.}
-\usage{Levene(datatable,y,g,covariates=NULL,method="Brown-Forsythe",
+\usage{levene(datatable,y,g,covariates=NULL,method="Brown-Forsythe",
                    log.p=FALSE)}
 %- maybe also 'usage' for other objects documented here.
 

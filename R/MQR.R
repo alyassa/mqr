@@ -1,5 +1,5 @@
 
-MQR <- function(datatable,y,g,covariates=NULL,tau=seq(0.05, 0.95, by=0.05),
+mqr <- function(datatable,y,g,covariates=NULL,tau=seq(0.05, 0.95, by=0.05),
                 mqr.method="UQR",boot.m="mcmb",boot.R=200,seed=31371,enable.dither=TRUE,
                 Univariable=TRUE,fitOLS=TRUE){
   # datatable=DT;y="response";g="x";tau=seq(0.05,0.95,length.out=10);
@@ -16,7 +16,7 @@ MQR <- function(datatable,y,g,covariates=NULL,tau=seq(0.05, 0.95, by=0.05),
   }
   DT <- data.table(model.frame(FML, datatable))
 
-  if(mqr.method=="CQR"){
+  if(mqr.method=="cqr"){
     ifelse(nrow(DT)<2000,{rq_meth <- "br"},
            ifelse(nrow(DT)<100000,{rq_meth <- "fn"},
                   {rq_meth <- "pfn"}))
@@ -58,9 +58,9 @@ MQR <- function(datatable,y,g,covariates=NULL,tau=seq(0.05, 0.95, by=0.05),
       successful.taus <- colnames(boot.Bs)
     }
     # META-REGRESSION ANALYSIS
-    Results <- tryCatch({MetaReg.CQR(Beta,boot.Bs)}, error=function(err){
+    Results <- tryCatch({mcqr(Beta,boot.Bs)}, error=function(err){
       # print(paste0("MR-CQR failed because : ",err))
-      return(c("ERROR",paste0("MR-CQR failed because : ",err[[1]])))})
+      return(c("ERROR",paste0("MCQR failed because : ",err[[1]])))})
     # META-REGRESSION ANALYSIS CHECK : For some studies MR has singular matrix design, this is
     # fixed by using dither(), which is 'quantreg' version of jitter(), to introduce right-sided
     # noise to the response.
@@ -107,9 +107,9 @@ MQR <- function(datatable,y,g,covariates=NULL,tau=seq(0.05, 0.95, by=0.05),
           successful.taus <- colnames(boot.Bs)
         }
         # META-REGRESSION ANALYSIS
-        Results <- tryCatch({MetaReg.CQR(Beta,boot.Bs)}, error=function(err){
+        Results <- tryCatch({mcqr(Beta,boot.Bs)}, error=function(err){
           # print(paste0("MR-CQR failed because : ",err))
-          return(c("ERROR",paste0("MR-CQR dithered failed because : ",err[[1]])))})
+          return(c("ERROR",paste0("MCQR dithered failed because : ",err[[1]])))})
         if(Results[[1]]=="ERROR"){
           Results <- c(MCQR.MetaTau_Beta=NA,MCQR.MetaTau_SE=NA,MCQR.MetaTau_tval=NA,
                        MCQR.MetaTau_p.value=NA)
@@ -206,7 +206,7 @@ MQR <- function(datatable,y,g,covariates=NULL,tau=seq(0.05, 0.95, by=0.05),
     Beta_0.5 <- coef(lm(as.formula(paste("RIF",g,sep=" ~ ")),data=DT))[g]
     DT[,y:= y - Beta_0.5*DT[[g]]]
 
-    RIF <- RIF.Transform(y=DT[,y], taus=tau) # compute RIF at taus of interest
+    RIF <- rif(y=DT[,y], taus=tau) # compute RIF at taus of interest
 
     if(Univariable){
       FML <- as.formula(paste("RIF",g,sep=" ~ "))
@@ -217,11 +217,11 @@ MQR <- function(datatable,y,g,covariates=NULL,tau=seq(0.05, 0.95, by=0.05),
 
     Models <- lm(FML, DT)
     Beta <- Models$coefficients[2,]
-    COV <- RIFmod.cov(Models, pred=g)
+    COV <- rif.cov(Models, pred=g)
 
     # re-centred tau
     taus <- tau-0.5
-    Results <- tryCatch({MetaReg.UQR(Beta=Beta, COV=COV, taus=taus)}, error=function(err){
+    Results <- tryCatch({muqr(Beta=Beta, COV=COV, taus=taus)}, error=function(err){
       # print(paste0("MR-UQR failed because : ",err))
       return(c("ERROR",paste0("MR-UQR failed because : ",err[[1]])))
     })
@@ -243,7 +243,7 @@ MQR <- function(datatable,y,g,covariates=NULL,tau=seq(0.05, 0.95, by=0.05),
         Models <- lm(FML, DT)
         Beta <- Models$coefficients[2,]
         COV <- RIFmod.cov(Models, pred=g)
-        Results <- tryCatch({MetaReg.UQR(Beta=Beta, COV=COV, taus=taus)}, error=function(err){
+        Results <- tryCatch({muqr(Beta=Beta, COV=COV, taus=taus)}, error=function(err){
           # print(paste0("MR-UQR failed because : ",err))
           return(c("ERROR",paste0("MR-UQR failed because : ",err[[1]])))})
         if(Results[[1]]=="ERROR"){
