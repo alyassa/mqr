@@ -1,7 +1,7 @@
 
 MQR <- function(datatable,y,g,covariates=NULL,tau=seq(0.05, 0.95, by=0.05),
                 mqr.method="UQR",boot.m="mcmb",boot.R=200,seed=31371,enable.dither=TRUE,
-                Univariable=TRUE,fitOLS=TRUE){
+                Univariable=TRUE,fitOLS=TRUE,Fit_Median_Unadjusted=FALSE){
   # datatable=DT;y="response";g="x";tau=seq(0.05,0.95,length.out=10);
   # mqr.method="UQR";boot.m="mcmb";boot.R=200;seed=31371;enable.dither=TRUE;
   # Univariable=TRUE;fitOLS=TRUE;covariates=NULL
@@ -202,9 +202,13 @@ MQR <- function(datatable,y,g,covariates=NULL,tau=seq(0.05, 0.95, by=0.05),
     DT[,y:=DT[[y]]]
     g.ptm <- proc.time()
     # Adjust for Median effects of g (i.e. residual scale)
-    RIF <- RIF.Transform(y=DT[,y], taus=0.5)
-    Beta_0.5 <- coef(lm(as.formula(paste("RIF",g,sep=" ~ ")),data=DT))[g]
-    DT[,y:= y - Beta_0.5*DT[[g]]]
+    if(!Fit_Median_Unadjusted){
+      RIF <- RIF.Transform(y=DT[,y], taus=0.5)
+      Beta_0.5 <- coef(lm(as.formula(paste("RIF",g,sep=" ~ ")),data=DT))[g]
+      DT[,y:= y - Beta_0.5*DT[[g]]]
+    } else {
+      warning('You have chosen to fit median unadjusted MUQR models. These are known to have elevated Type I error')
+    }
 
     RIF <- RIF.Transform(y=DT[,y], taus=tau) # compute RIF at taus of interest
 
@@ -235,9 +239,13 @@ MQR <- function(datatable,y,g,covariates=NULL,tau=seq(0.05, 0.95, by=0.05),
         DT[,Dithered_Response:=dither(y,type="right")]
         # FML <- as.formula(paste("Dithered_Response",FML[[1]],FML[[3]]))
         # Adjust for Median effects of g (i.e. residual scale)
-        RIF <- RIF.Transform(y=DT[,Dithered_Response], taus=0.5)
-        Beta_0.5 <- coef(lm(as.formula(paste("RIF",g,sep=" ~ ")),data=DT))[g]
-        DT[,Residual_Dithered_Response:=Dithered_Response - Beta_0.5*DT[[g]]]
+        if(!Fit_Median_Unadjusted){
+          RIF <- RIF.Transform(y=DT[,Dithered_Response], taus=0.5)
+          Beta_0.5 <- coef(lm(as.formula(paste("RIF",g,sep=" ~ ")),data=DT))[g]
+          DT[,Residual_Dithered_Response:=Dithered_Response - Beta_0.5*DT[[g]]]
+        } else {
+          DT[,Residual_Dithered_Response:=Dithered_Response]
+        }
 
         RIF <- RIF.Transform(y=DT[,Residual_Dithered_Response], taus=tau) # compute RIF at taus of interest
         Models <- lm(FML, DT)

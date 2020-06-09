@@ -1,7 +1,7 @@
 
 # ============= FUNCTIONS AND PACKAGES ====================
 library(foreach); library(doParallel); slibrary(sn); library(lubridate); library(rmutil);
- library(VGAM);
+ library(VGAM);library(emg)
 
 # So right now i've settelled on 6 Different methods to skew the distribution still
 # producing mean of zero and var of 1.
@@ -159,7 +159,7 @@ gamma_parameter_sampling <- function(y){
   return(y)
 }
 
-Sim.function <- function(Arguments,Model,Mode="Scaling.Model",add.GxE=FALSE,
+Sim.function <- function(Arguments,Model,Mode="Scaling.Model",
                          S.fun1=Generate_Genotypes,
                          S.fun2=Error.Distribution,
                          S.fun3=gamma_parameter_sampling){
@@ -189,7 +189,8 @@ Sim.function <- function(Arguments,Model,Mode="Scaling.Model",add.GxE=FALSE,
     Adjusted.for <- Arguments["Adjusted.for"];
     No.taus <- as.numeric(Arguments["No.taus"]);
     Scale <- Arguments["Scale"];
-    method <- Arguments["method"]
+    method <- Arguments["method"];
+    Tests.To.Run <- Arguments["Tests.To.Run"];
   }
   if(!is.na(Seed)){
     set.seed(Seed)
@@ -271,26 +272,53 @@ Sim.function <- function(Arguments,Model,Mode="Scaling.Model",add.GxE=FALSE,
   }
 
   Taus <- seq(0.05,0.95,length.out=No.taus)
-  MQR.Result <- MQR(DT,tau=Taus,y="pheno", g="geno")
-  MQR.Result <- c(SNP_v.G=v.G,SNP_MAF=MAF,MQR.Result)
-  # browser()
-  if(add.GxE){
+  MQR.Result <- c(SNP_v.G=v.G,SNP_MAF=MAF)
+  if(grepl("MCQR",Tests.To.Run)){
+    MQR.Result <- c(MQR.Result,MQR(DT,y="pheno", g="geno",tau=Taus,mqr.method="MCQR"))
+  }
+  if(grepl("MUQR",Tests.To.Run)){
+    MQR.Result <- c(MQR.Result,MQR(DT,y="pheno", g="geno",tau=Taus,mqr.method="MUQR"))
+  }
+  if(grepl("Unadjusted-MUQR",Tests.To.Run)){
+    temp <- MQR(DT,y="pheno", g="geno",tau=Taus,mqr.method="MUQR",Fit_Median_Unadjusted=TRUE)
+    names(temp) <- paste0("Median_unadj_",names(temp))
+    MQR.Result <- c(MQR.Result,temp)
+  }
+  if(grepl("Classic-Levene",Tests.To.Run)){
+    MQR.Result <- c(MQR.Result,Levene(DT,y="pheno", g="geno",method="Classic-Levene"))
+  }
+  if(grepl("Brown-Forsythe",Tests.To.Run)){
+    MQR.Result <- c(MQR.Result,Levene(DT,y="pheno", g="geno",method="Brown-Forsythe"))
+  }
+  if(grepl("z.squared",Tests.To.Run)){
+    MQR.Result <- c(MQR.Result,z.squared(DT,y="pheno", g="geno"))
+  }
+  if(grepl("GxE",Tests.To.Run)){
     lm1 <- coef(summary(lm(pheno~geno*E,data=DT)))
     MQR.Result <- c(MQR.Result,GxE_Beta=lm1["geno:E",1],GxE_SE=lm1["geno:E",2],
-                     GxE_tval=lm1["geno:E",3],GxE_p.value=lm1["geno:E",4])
+                    GxE_tval=lm1["geno:E",3],GxE_p.value=lm1["geno:E",4])
   }
 
   if(Mode=="Scaling.Model.Fitting"){
     return(MQR.Result)
   } else if(Mode=="Scaling.Adjustment"){
-    return(c(MQR.Result,
-             as.matrix(Scaling.Adjustor(data=data.table(t(MQR.Result)),model=Model,
-                              response="MQR.MetaTau_Beta",
-                              predictor="MQR.Median_Beta",method=method))[1,]))
+    if(grepl("MCQR",Tests.To.Run)){
+      return(c(MQR.Result,
+               as.matrix(Scaling.Adjustor(data=data.table(t(MQR.Result)),model=Model,
+                                          response="MCQR.MetaTau_Beta",
+                                          predictor="MCQR.Median_Beta",method=method))[1,]))
+    } else if(grepl("MUQR",Tests.To.Run)){
+      return(c(MQR.Result,
+               as.matrix(Scaling.Adjustor(data=data.table(t(MQR.Result)),model=Model,
+                                          response="MUQR.MetaTau_Beta",
+                                          predictor="MUQR.Median_Beta",method=method))[1,]))
+    } else (
+      warning("You did not specify MCQR or MUQR in 'Test.To.Run' argument so no scaling adjustment can be applied")
+    )
   }
 }
 
-Scaling.Model.Fitter <- function(Arguments,return.full=TRUE,add.GxE=FALSE,
+Scaling.Model.Fitter <- function(Arguments,return.full=TRUE,
                                  D.fun1=Generate_Genotypes,
                                  D.fun2=Error.Distribution,
                                  D.fun3=Sim.function,
@@ -322,6 +350,7 @@ Scaling.Model.Fitter <- function(Arguments,return.full=TRUE,add.GxE=FALSE,
     Scale <- Arguments["Scale"]
     Seed <- as.numeric(Arguments["Seed"]);
     method <- Arguments["method"]
+    Tests.To.Run <- Arguments["Tests.To.Run"];
   }
   ptm <- proc.time()
   if(!is.na(Seed)){
@@ -338,24 +367,28 @@ Scaling.Model.Fitter <- function(Arguments,return.full=TRUE,add.GxE=FALSE,
     DEM_v.G <- rchisq(Sc.R,1)*v.G_DistMean
     DEM_v.G[sample(1:Sc.R,v.G_DistQuant*Sc.R)] <- runif(v.G_DistQuant*Sc.R,0.003,0.006)
   }
-  if(add.GxE){
-    cols <- c("SNP_v.G","SNP_MAF","LN_Beta","LN_SE","LN_tval",
-              "LN_p.value","MCQR.Median_Beta","MCQR.Median_SE","MCQR.Median_tval",
-              "MCQR.Median_p.value","MCQR.MetaTau_Beta","MCQR.MetaTau_SE",
-              "MCQR.MetaTau_tval","MCQR.MetaTau_p.value","MCQR.TtC","Notes","GxE_Beta",
-              "GxE_SE","GxE_tval","GxE_p.value")
-  } else {
-    cols <- c("SNP_v.G","SNP_MAF","LN_Beta","LN_SE","LN_tval",
-              "LN_p.value","MCQR.Median_Beta","MCQR.Median_SE","MCQR.Median_tval",
-              "MCQR.Median_p.value","MCQR.MetaTau_Beta","MCQR.MetaTau_SE",
-              "MCQR.MetaTau_tval","MCQR.MetaTau_p.value","MCQR.TtC","Notes")
+  cols <- c("SNP_v.G","SNP_MAF","LN_Beta","LN_SE","LN_tval","LN_p.value")
+  if(grepl("MCQR",Tests.To.Run)){
+    cols <- c(cols,"MCQR.Median_Beta","MCQR.Median_SE",
+              "MCQR.Median_tval","MCQR.Median_p.value","MCQR.MetaTau_Beta","MCQR.MetaTau_SE",
+              "MCQR.MetaTau_tval","MCQR.MetaTau_p.value","Successful.Taus","No.Successful.Taus",
+              "rq.method","boot.method","MCQR.TtC")
   }
+  if(grepl("MUQR",Tests.To.Run)){
+    cols <- c(cols,"MUQR.Median_Beta","MUQR.Median_SE",
+              "MUQR.Median_tval","MUQR.Median_p.value","MUQR.MetaTau_Beta","MUQR.MetaTau_SE",
+              "MUQR.MetaTau_tval","MUQR.MetaTau_p.value","MUQR.TtC")
+  }
+  if(grepl("GxE",Tests.To.Run)){
+    cols <- c(cols,"GxE_Beta","GxE_SE","GxE_tval","GxE_p.value","Notes")
+  }
+
   # print("Generating Scaling Model")
   ptm <- proc.time()
   Results <- foreach(i=1:nodes, .combine=function(...) rbindlist(list(...)),
                      .multicombine=TRUE, .inorder=FALSE
   ) %dopar% {
-    library(data.table);library(sn); library(emg); library(quantreg)
+    library(mqr);library(sn); library(emg)
     i.Result <- matrix(NA,length(batches[[i]]),length(cols),
                        dimnames=list(1:length(batches[[i]]),cols))
     for(j in 1:length(batches[[i]])){
@@ -373,7 +406,8 @@ Scaling.Model.Fitter <- function(Arguments,return.full=TRUE,add.GxE=FALSE,
                       gamma_0,gamma_1,v.ParTot,Scale)
 
       i.Result[j,] <- D.fun3(Arguments=c(j.args[1,],Seed=se),Mode="Scaling.Model.Fitting",
-                             add.GxE,S.fun1=D.fun1,S.fun2=D.fun2,S.fun4=D.fun4)
+                             add.GxE,S.fun1=D.fun1,S.fun2=D.fun2,S.fun4=D.fun4,
+                             Tests.To.Run)
     }
     i.Result <- data.table(i.Result)
     return(i.Result)
@@ -398,15 +432,11 @@ Scaling.Model.Fitter <- function(Arguments,return.full=TRUE,add.GxE=FALSE,
 Test.Sim.function <- function(Arguments,Model,add.GxE=FALSE,
                               D.fun1=Generate_Genotypes,
                               D.fun2=Error.Distribution,
-                              D.fun3=rntransform,
-                              D.fun4=MCQR.function,
-                              D.fun7=MetaReg.MCQR.function,
-                              D.fun8=Sim.function,
-                              D.fun9=Scaling.Adjustor,
-                              D.fun10=gamma_parameter_sampling){
-  # D.fun1=Generate_Genotypes;D.fun2=Error.Distribution;D.fun3=rntransform;
-  # D.fun4=MCQR.function;D.fun7=MetaReg.MCQR.function;D.fun8=Sim.function;
-  # D.fun9=Scaling.Adjustor;D.fun10=gamma_parameter_sampling
+                              D.fun3=Sim.function,
+                              D.fun4=gamma_parameter_sampling){
+  # D.fun1=Generate_Genotypes;D.fun2=Error.Distribution;rntransform=rntransform;
+  # MQR=MCQR.function;=MetaReg.MCQR.function;D.fun3=Sim.function;
+  # Scaling.Adjustor=Scaling.Adjustor;D.fun4=gamma_parameter_sampling
   # add.GxE=TRUE;Model=i.ScalingModel$Model
   # Arguments=c(j.args[1,],Seed=j.s)
   if(!missing(Arguments)){
@@ -454,13 +484,111 @@ Test.Sim.function <- function(Arguments,Model,add.GxE=FALSE,
       # print(se)
       j.args <- copy(Arguments)
       j.args["Seed"] <- as.character(se)
-      i.Result[j,] <- D.fun8(Arguments=j.args,Model=Model,Mode="Scaling.Adjustment",
+      i.Result[j,] <- D.fun3(Arguments=j.args,Model=Model,Mode="Scaling.Adjustment",
                              add.GxE,
-                             S.fun1=D.fun1,S.fun2=D.fun2,S.fun3=D.fun3,
-                             S.fun4=D.fun4,S.fun7=D.fun7,S.fun8=D.fun9,S.fun9=D.fun10)
+                             S.fun1=D.fun1,S.fun2=D.fun2,S.fun3=rntransform,
+                             S.fun4=MQR,S.fun7=,S.fun8=Scaling.Adjustor,S.fun9=D.fun4)
     }
     i.Result <- data.table(i.Result)
     return(i.Result)
   }
   return(Results)
 }
+
+
+# ============= MQR : RUNNING ANALYSIS ====================
+# Conditions to test
+Special <- "None"; N <- 10000; v.E <- 0.24; Interaction.Dir <- "+ve";
+hwe.p <- 1; min.grp.size <- 3; Pare.Encoding <- TRUE; Adjusted.for <- NULL;
+Type <- "Normal"; a <- NA  ; b <- NA; Skew.Dir <- "None"; b0 <- 25
+
+N <- c(250,500,1000,2000,5000)
+No.taus <- c(4,7,10,20)
+Ranges <- rbind(c(0.02,0.98),c(0.05,0.95),c(0.1,0.9),c(0.2,0.8))
+v.GxE <- seq(0,0.004,length.out=5)
+v.G_Buffer <- 0.1
+v.G <- 0.004
+MAF <- 0.3
+R <- 2000
+nodes <- 40
+batches <- split(1:R,cut(seq_along(1:R),nodes,labels=FALSE))
+Seeding <- 3435 # if you dont want to seed, set to NA
+Conditions <- data.table(expand.grid(N=N,No.taus=No.taus,Ranges=1:nrow(Ranges),v.GxE=v.GxE,
+                                     stringsAsFactors=FALSE))
+# Timer.Matrix <- data.table(expand.grid(N=N,No.taus=No.taus,stringsAsFactors=FALSE))
+# Timer.List <- as.list(rep(NA,nrow(Timer.Matrix)))
+# Timer.List <- as.list(rep(NA,length(N)*length(No.taus)))
+
+cols <- c("SNP_v.G","SNP_MAF","LN_Beta","LN_SE","LN_tval","LN_p.value","MUQR.Median_Beta",
+          "MUQR.Median_SE","MUQR.Median_tval","MUQR.Median_p.value","MUQR.MetaTau_Beta",
+          "MUQR.MetaTau_SE","MUQR.MetaTau_tval","MUQR.MetaTau_p.value","MUQR.TtC",
+          "MCQR.Median_Beta","MCQR.Median_SE","MCQR.Median_tval","MCQR.Median_p.value",
+          "MCQR.MetaTau_Beta","MCQR.MetaTau_SE","MCQR.MetaTau_tval","MCQR.MetaTau_p.value",
+          "Successful.Taus","No.Successful.Taus","rq.method","boot.method","MCQR.TtC","Notes")
+
+Analysis.Timer <- NULL
+Analysis.Results <- list()
+cl <- makeCluster(nodes)
+registerDoParallel(cl)
+for(i in 1:nrow(Conditions)){
+  # Timer.row <- Timer.Matrix[,which(Conditions[i,N]==N & Conditions[i,No.taus]==No.taus)]
+  # if(length(Timer.List[[Timer.row]])==1 & is.na(Timer.List[[Timer.row]])){
+  #   print(paste0("ANALYSIS OF CONDITIONS ",i, " OF ",nrow(Conditions),
+  #                " STARTED AT: ", Sys.time()))
+  # } else {
+  #   print(paste0("ANALYSIS OF CONDITIONS ",i, " OF ",nrow(Conditions),
+  #                " STARTED AT: ", Sys.time(),". ETC = ",
+  #                seconds_to_period(as.numeric(round(mean(Timer.List[[Timer.row]]))))))
+  # }
+  if(is.null(Analysis.Results)){
+    print(paste0("ANALYSIS OF CONDITIONS ",i, " OF ", nrow(Conditions),
+                 " STARTED AT: ", Sys.time()))
+  } else {
+    print(paste0("ANALYSIS OF CONDITIONS ",i, " OF ", nrow(Conditions),
+                 " STARTED AT: ", Sys.time(),". ETC = ",
+                 seconds_to_period(as.numeric(round(mean(Analysis.Timer)*
+                                                      (nrow(Conditions)-i+1))))," [",
+                 seconds_to_period(as.numeric(round(min(Analysis.Timer)*
+                                                      (nrow(Conditions)-i+1))))," - ",
+                 seconds_to_period(as.numeric(round(max(Analysis.Timer)*
+                                                      (nrow(Conditions)-i+1)))),"]"))
+  }
+  i.ptm <- proc.time()
+  i.args <- cbind(N=Conditions[i,N],b0,v.G,v.E,v.GxE=Conditions[i,v.GxE],v.G_Buffer,
+                  Interaction.Dir,MAF,hwe.p,min.grp.size,Pare.Encoding,Type,a,b,Skew.Dir,
+                  Adjusted.for,
+                  No.taus=Conditions[i,No.taus],
+                  min.tau=Ranges[Conditions[i,Ranges],1],
+                  max.tau=Ranges[Conditions[i,Ranges],2])
+  # paste(names(Sim.function(Arguments=i.args[1,])),sep='',collapse='","')
+  i.Results <- foreach(j=1:nodes, .combine=function(...) rbindlist(list(...)),
+                       .multicombine=TRUE, .inorder=FALSE
+  ) %dopar% {
+    library(data.table);library(quantreg)
+    Reps <- batches[[j]]
+    j.Results <- matrix(NA,nrow=length(Reps),ncol=length(cols),
+                        dimnames=list(1:length(Reps),cols))
+    for(l in 1:length(Reps)){
+      l.s <- nrow(Conditions)*R*(i-1) + (Reps[l]-1) + Seeding
+      # print(l.s)
+      j.Results[l,] <- Sim.function(Arguments=c(i.args[1,],Seed=l.s))
+    }
+    j.Results <- data.table(j.Results)
+  }
+  i.Results <- cbind(Conditions[i,],i.Results)
+  Analysis.Results[[i]] <- i.Results
+  i.etm <- proc.time()-i.ptm
+  # if(length(Timer.List[[Timer.row]])==1 & is.na(Timer.List[[Timer.row]])){
+  #   Timer.List[[Timer.row]] <- i.etm[[3]]
+  # } else {
+  #   Timer.List[[Timer.row]] <- c(Timer.List[[Timer.row]],i.etm[[3]])
+  # }
+  Analysis.Timer <- c(Analysis.Timer,i.etm[[3]])
+  print(paste0("ANALYSIS OF CONDITIONS ",i, " OF ",nrow(Conditions),
+               " COMPLETED IN ", seconds_to_period(round(i.etm[[3]]))))
+}
+stopCluster(cl)
+
+p <- "/home/../media/StoreB/arkan/Simulations_Quantile_Regression/Results/RData_Objects"
+save.image(file=file.path(p,"TestRangeNumber_Sims_July2_2019.RData"))
+
