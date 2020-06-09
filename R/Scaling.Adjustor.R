@@ -1,4 +1,4 @@
-Scaling.Adjustor <- function(FML,data,weights,model,response,predictor,
+scaling.adjustor <- function(FML,data,weights,model,response,predictor,
                              method="Median_rq"){
   # data=Results
   # browser()

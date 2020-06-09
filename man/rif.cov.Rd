@@ -1,5 +1,5 @@
-\name{RIFmod.cov}
-\alias{RIFmod.cov}
+\name{rif.cov}
+\alias{rif.cov}
 \title{
 RIF Model Covariance
 }
@@ -7,7 +7,7 @@ RIF Model Covariance
 Extracts covariance matrix on RIF models over quantiles
 }
 \usage{
-RIFmod.cov(object, pred)
+rif.cov(object, pred)
 }
 
 \arguments{

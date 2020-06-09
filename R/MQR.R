@@ -16,7 +16,7 @@ mqr <- function(datatable,y,g,covariates=NULL,tau=seq(0.05, 0.95, by=0.05),
   }
   DT <- data.table(model.frame(FML, datatable))
 
-  if(mqr.method=="cqr"){
+  if(mqr.method=="CQR"){
     ifelse(nrow(DT)<2000,{rq_meth <- "br"},
            ifelse(nrow(DT)<100000,{rq_meth <- "fn"},
                   {rq_meth <- "pfn"}))
@@ -202,7 +202,7 @@ mqr <- function(datatable,y,g,covariates=NULL,tau=seq(0.05, 0.95, by=0.05),
     DT[,y:=DT[[y]]]
     g.ptm <- proc.time()
     # Adjust for Median effects of g (i.e. residual scale)
-    RIF <- RIF.Transform(y=DT[,y], taus=0.5)
+    RIF <- rif(y=DT[,y], taus=0.5)
     Beta_0.5 <- coef(lm(as.formula(paste("RIF",g,sep=" ~ ")),data=DT))[g]
     DT[,y:= y - Beta_0.5*DT[[g]]]
 

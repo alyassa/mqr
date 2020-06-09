@@ -1,4 +1,4 @@
-MetaReg.UQR <- function(Beta, COV, taus,test="z"){
+muqr <- function(Beta, COV, taus,test="z"){
   #taus=tau; test="z"
   m <- length(taus)
   A <- cbind(1, taus)

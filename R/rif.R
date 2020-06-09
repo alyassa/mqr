@@ -1,4 +1,4 @@
-RIF.Transform <- function(y,taus){
+rif <- function(y,taus){
   n <- length(y)
   qhat <- quantile(y,taus)
   bw0 <- bw.nrd0(y)

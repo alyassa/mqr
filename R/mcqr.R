@@ -1,4 +1,4 @@
-MetaReg.CQR <- function(Beta,boot.Bs,test="z"){
+mcqr <- function(Beta,boot.Bs,test="z"){
   to.rm <- which(colSums(is.na(boot.Bs))==nrow(boot.Bs)) # check for taus where bootstrapping failed.
   if(length(to.rm)>0){
     boot.Bs <- boot.Bs[,-to.rm] # remove boot.Bs columns where bootstrapping failed.

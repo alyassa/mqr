@@ -1,5 +1,5 @@
 # Function to extract covariance matrix from multivariate OLS
-RIFmod.cov <- function(object, pred){
+rif.cov <- function(object, pred){
   # object is class of multivariate lm
   # pred is a character for name of predictor
   #object=Models; pred="g"

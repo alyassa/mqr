@@ -1,5 +1,5 @@
-\name{RIF.Transform}
-\alias{RIF.Transform}
+\name{rif}
+\alias{rif}
 
 \title{
 RIF Transformation
@@ -8,7 +8,7 @@ RIF Transformation
 Performs recentered influence function (RIF) transformation on continuous response variable at each specified quantile
 }
 \usage{
-RIF.Transform(y,taus)
+rif(y,taus)
 }
 %- maybe also 'usage' for other objects documented here.
 \arguments{

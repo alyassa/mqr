@@ -1,5 +1,5 @@
-\name{MetaReg.UQR}
-\alias{MetaReg.UQR}
+\name{muqr}
+\alias{muqr}
 \title{
 CQR Meta-Regression
 }
@@ -7,7 +7,7 @@ CQR Meta-Regression
 This function fits a meta-regression model of CQR estimates over quantiles. It takes in quantile estimates from UQR models across tau quantiles as well a corresponding covariance matrix said estimates across tau and fits a metaregression model to estimate linear change in quantile estimates (dependent variable) over tau (independent variable).
 }
 \usage{
-MetaReg.UQR(Beta,COV,taus,test="z")
+muqr(Beta,COV,taus,test="z")
 }
 %- maybe also 'usage' for other objects documented here.
 \arguments{
