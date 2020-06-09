@@ -217,7 +217,7 @@ mqr <- function(datatable,y,g,covariates=NULL,tau=seq(0.05, 0.95, by=0.05),
 
     Models <- lm(FML, DT)
     Beta <- Models$coefficients[2,]
-    COV <- riftransform.cov(Models, pred=g)
+    COV <- rif.cov(Models, pred=g)
 
     # re-centred tau
     taus <- tau-0.5
