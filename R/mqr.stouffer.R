@@ -1,5 +1,5 @@
 
-stouffer.test <- function(x,Statistic="z",Weights,log_p.value=FALSE) {
+mqr.stouffer <- function(x,Statistic="z",Weights,log_p.value=FALSE) {
   #z is a vector of z-values
   #Weights is typically sample size
   #z=datatable[,RIF.MetaTau_tval]; Weights=datatable[,N];log_p.value=FALSE

@@ -1,4 +1,4 @@
-fischer.test <- function(x,Statistic="z",log_p.value=FALSE) {
+mqr.fischer <- function(x,Statistic="z",log_p.value=FALSE) {
   #z is a vector of z-values
   #Weights is typically sample size
   #z=datatable[,RIF.MetaTau_tval]

@@ -202,11 +202,11 @@ mqr <- function(datatable,y,g,covariates=NULL,tau=seq(0.05, 0.95, by=0.05),
     DT[,y:=DT[[y]]]
     g.ptm <- proc.time()
     # Adjust for Median effects of g (i.e. residual scale)
-    RIF <- rif(y=DT[,y], taus=0.5)
+    RIF <- riftransform(y=DT[,y], taus=0.5)
     Beta_0.5 <- coef(lm(as.formula(paste("RIF",g,sep=" ~ ")),data=DT))[g]
     DT[,y:= y - Beta_0.5*DT[[g]]]
 
-    RIF <- rif(y=DT[,y], taus=tau) # compute RIF at taus of interest
+    RIF <- riftransform(y=DT[,y], taus=tau) # compute RIF at taus of interest
 
     if(Univariable){
       FML <- as.formula(paste("RIF",g,sep=" ~ "))
@@ -217,7 +217,7 @@ mqr <- function(datatable,y,g,covariates=NULL,tau=seq(0.05, 0.95, by=0.05),
 
     Models <- lm(FML, DT)
     Beta <- Models$coefficients[2,]
-    COV <- rif.cov(Models, pred=g)
+    COV <- riftransform.cov(Models, pred=g)
 
     # re-centred tau
     taus <- tau-0.5
@@ -235,11 +235,11 @@ mqr <- function(datatable,y,g,covariates=NULL,tau=seq(0.05, 0.95, by=0.05),
         DT[,Dithered_Response:=dither(y,type="right")]
         # FML <- as.formula(paste("Dithered_Response",FML[[1]],FML[[3]]))
         # Adjust for Median effects of g (i.e. residual scale)
-        RIF <- rif(y=DT[,Dithered_Response], taus=0.5)
+        RIF <- riftransform(y=DT[,Dithered_Response], taus=0.5)
         Beta_0.5 <- coef(lm(as.formula(paste("RIF",g,sep=" ~ ")),data=DT))[g]
         DT[,Residual_Dithered_Response:=Dithered_Response - Beta_0.5*DT[[g]]]
 
-        RIF <- rif(y=DT[,Residual_Dithered_Response], taus=tau) # compute RIF at taus of interest
+        RIF <- riftransform(y=DT[,Residual_Dithered_Response], taus=tau) # compute RIF at taus of interest
         Models <- lm(FML, DT)
         Beta <- Models$coefficients[2,]
         COV <- RIFmod.cov(Models, pred=g)
@@ -256,7 +256,7 @@ mqr <- function(datatable,y,g,covariates=NULL,tau=seq(0.05, 0.95, by=0.05),
           names(Results) <- c("MUQR.MetaTau_Beta","MUQR.MetaTau_SE","MUQR.MetaTau_tval",
                               "MUQR.MetaTau_p.value")
           # Add MEDIAN Regression Estimates
-          RIF <- rif(y=DT[,Dithered_Response], taus=0.5)
+          RIF <- riftransform(y=DT[,Dithered_Response], taus=0.5)
           RIF.sum <- coef(summary(lm(FML,DT)))
           MEDIAN.Result <- c(MUQR.Median_Beta=RIF.sum[g,1],MUQR.Median_SE=RIF.sum[g,2],
                              MUQR.Median_tval=RIF.sum[g,3],MUQR.Median_p.value=RIF.sum[g,4])
@@ -283,7 +283,7 @@ mqr <- function(datatable,y,g,covariates=NULL,tau=seq(0.05, 0.95, by=0.05),
       names(Results) <- c("MUQR.MetaTau_Beta","MUQR.MetaTau_SE","MUQR.MetaTau_tval",
                           "MUQR.MetaTau_p.value")
       # Add MEDIAN Regression Estimates
-      RIF <- rif(y=DT[[y]], taus=0.5)
+      RIF <- riftransform(y=DT[[y]], taus=0.5)
       RIF.sum <- coef(summary(lm(FML,DT)))
       MEDIAN.Result <- c(MUQR.Median_Beta=RIF.sum[g,1],MUQR.Median_SE=RIF.sum[g,2],
                          MUQR.Median_tval=RIF.sum[g,3],MUQR.Median_p.value=RIF.sum[g,4])
