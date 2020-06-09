@@ -217,7 +217,7 @@ MQR <- function(datatable,y,g,covariates=NULL,tau=seq(0.05, 0.95, by=0.05),
 
     Models <- lm(FML, DT)
     Beta <- Models$coefficients[2,]
-    COV <- RIFmod.cov(Models, pred=g)
+    COV <- RIF.cov(Models, pred=g)
 
     # re-centred tau
     taus <- tau-0.5
@@ -242,7 +242,7 @@ MQR <- function(datatable,y,g,covariates=NULL,tau=seq(0.05, 0.95, by=0.05),
         RIF <- RIF.Transform(y=DT[,Residual_Dithered_Response], taus=tau) # compute RIF at taus of interest
         Models <- lm(FML, DT)
         Beta <- Models$coefficients[2,]
-        COV <- RIFmod.cov(Models, pred=g)
+        COV <- RIF.cov(Models, pred=g)
         Results <- tryCatch({MetaReg.UQR(Beta=Beta, COV=COV, taus=taus)}, error=function(err){
           # print(paste0("MR-UQR failed because : ",err))
           return(c("ERROR",paste0("MR-UQR failed because : ",err[[1]])))})
