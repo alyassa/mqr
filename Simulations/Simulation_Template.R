@@ -1,6 +1,7 @@
 # ============= FUNCTIONS AND PACKAGES ====================
 library(foreach); library(lubridate); library(doParallel);
 
+# needs work
 # So right now i've settelled on 6 Different methods to skew the distribution still
 # producing mean of zero and var of 1.
 Error.Distribution <- function(N,Type="Normal",a,b,Skew.Dir="Right"){
