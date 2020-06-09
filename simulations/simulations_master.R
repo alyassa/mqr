@@ -1,7 +1,7 @@
 
 # ============= FUNCTIONS AND PACKAGES ====================
 library(foreach); library(doParallel); slibrary(sn); library(lubridate); library(rmutil);
- library(VGAM);library(emg)
+library(VGAM);library(emg)
 
 # So right now i've settelled on 6 Different methods to skew the distribution still
 # producing mean of zero and var of 1.
@@ -163,6 +163,7 @@ Sim.function <- function(Arguments,Model,Mode="Scaling.Model",
                          S.fun1=Generate_Genotypes,
                          S.fun2=Error.Distribution,
                          S.fun3=gamma_parameter_sampling){
+  Arguments
   if(!missing(Arguments)){
     N <- as.numeric(Arguments["N"]);
     MAF <- as.numeric(Arguments["MAF"]);
@@ -188,6 +189,8 @@ Sim.function <- function(Arguments,Model,Mode="Scaling.Model",
     Seed <- as.numeric(Arguments["Seed"]);
     Adjusted.for <- Arguments["Adjusted.for"];
     No.taus <- as.numeric(Arguments["No.taus"]);
+    min.tau <- as.numeric(Arguments["min.tau"]);
+    max.tau <- as.numeric(Arguments["max.tau"]);
     Scale <- Arguments["Scale"];
     method <- Arguments["method"];
     Tests.To.Run <- Arguments["Tests.To.Run"];
@@ -271,24 +274,46 @@ Sim.function <- function(Arguments,Model,Mode="Scaling.Model",
     return(DT)
   }
 
-  Taus <- seq(0.05,0.95,length.out=No.taus)
+  Taus <- seq(min.tau,max.tau,length.out=No.taus)
   MQR.Result <- c(SNP_v.G=v.G,SNP_MAF=MAF)
+  Notes <- NULL
   if(grepl("MCQR",Tests.To.Run)){
-    MQR.Result <- c(MQR.Result,MQR(DT,y="pheno", g="geno",tau=Taus,mqr.method="MCQR"))
+    temp <- MQR(DT,y="pheno", g="geno",tau=Taus,mqr.method="CQR")
+    if(!is.na(temp["Notes"])){
+      Notes <- c(Notes,temp["Notes"])
+    }
+    temp <- temp[3:(length(temp)-1)]
+    MQR.Result <- c(MQR.Result,temp)
   }
   if(grepl("MUQR",Tests.To.Run)){
-    MQR.Result <- c(MQR.Result,MQR(DT,y="pheno", g="geno",tau=Taus,mqr.method="MUQR"))
+    if(any(grepl("LN_Beta",names(MQR.Result)))){
+      temp <- MQR(DT,y="pheno", g="geno",tau=Taus,mqr.method="UQR",fitOLS=FALSE)
+    } else {
+      MQR(DT,y="pheno", g="geno",tau=Taus,mqr.method="UQR")
+    }
+    if(!is.na(temp["Notes"])){
+      Notes <- c(Notes,temp["Notes"])
+    }
+    temp <- temp[3:(length(temp)-1)]
+    MQR.Result <- c(MQR.Result,temp)
   }
   if(grepl("Unadjusted-MUQR",Tests.To.Run)){
-    temp <- MQR(DT,y="pheno", g="geno",tau=Taus,mqr.method="MUQR",Fit_Median_Unadjusted=TRUE)
+    temp <- MQR(DT,y="pheno", g="geno",tau=Taus,mqr.method="UQR",Fit_Median_Unadjusted=TRUE,
+                fitOLS=FALSE)
     names(temp) <- paste0("Median_unadj_",names(temp))
+    if(!is.na(temp["Notes"])){
+      Notes <- c(Notes,temp["Notes"])
+    }
+    temp <- temp[3:(length(temp)-1)]
     MQR.Result <- c(MQR.Result,temp)
   }
   if(grepl("Classic-Levene",Tests.To.Run)){
     MQR.Result <- c(MQR.Result,Levene(DT,y="pheno", g="geno",method="Classic-Levene"))
   }
   if(grepl("Brown-Forsythe",Tests.To.Run)){
-    MQR.Result <- c(MQR.Result,Levene(DT,y="pheno", g="geno",method="Brown-Forsythe"))
+    temp <- Levene(DT,y="pheno", g="geno",method="Brown-Forsythe")
+    names(temp) <- gsub("Levene","Brown_Forsythe",names(temp))
+    MQR.Result <- c(MQR.Result,temp)
   }
   if(grepl("z.squared",Tests.To.Run)){
     MQR.Result <- c(MQR.Result,z.squared(DT,y="pheno", g="geno"))
@@ -298,7 +323,12 @@ Sim.function <- function(Arguments,Model,Mode="Scaling.Model",
     MQR.Result <- c(MQR.Result,GxE_Beta=lm1["geno:E",1],GxE_SE=lm1["geno:E",2],
                     GxE_tval=lm1["geno:E",3],GxE_p.value=lm1["geno:E",4])
   }
-
+  if(!is.null(Notes)){
+    Notes <- paste(Notes,sep="",collapse=",")
+  } else {
+    Notes <- NA
+  }
+  MQR.Result <- c(MQR.Result,Notes)
   if(Mode=="Scaling.Model.Fitting"){
     return(MQR.Result)
   } else if(Mode=="Scaling.Adjustment"){
@@ -346,7 +376,10 @@ Scaling.Model.Fitter <- function(Arguments,return.full=TRUE,
     gamma_0 <- as.numeric(Arguments["gamma_0"]);
     gamma_1 <- as.numeric(Arguments["gamma_1"]);
     v.ParTot <- as.numeric(Arguments["v.ParTot"]);
-    Adjusted.for <- Arguments["Adjusted.for"]; No.taus <- as.numeric(Arguments["No.taus"]);
+    Adjusted.for <- Arguments["Adjusted.for"];
+    No.taus <- as.numeric(Arguments["No.taus"]);
+    min.tau <- as.numeric(Arguments["min.tau"]);
+    max.tau <- as.numeric(Arguments["max.tau"]);
     Scale <- Arguments["Scale"]
     Seed <- as.numeric(Arguments["Seed"]);
     method <- Arguments["method"]
@@ -402,7 +435,8 @@ Scaling.Model.Fitter <- function(Arguments,return.full=TRUE,
                       v.G=DEM_v.G[batches[[i]][j]],v.E,v.GxE=0,
                       MAF=MAF[batches[[i]][j]],
                       Interaction.Dir,hwe.p,min.grp.size,Pare.Encoding,Type,a,b,
-                      Skew.Dir,Adjusted.for,No.taus,Scaling.Method,lambda,alpha,Rank.Multiplier,
+                      Skew.Dir,Adjusted.for,No.taus,min.tau,max.tau,
+                      Scaling.Method,lambda,alpha,Rank.Multiplier,
                       gamma_0,gamma_1,v.ParTot,Scale)
 
       i.Result[j,] <- D.fun3(Arguments=c(j.args[1,],Seed=se),Mode="Scaling.Model.Fitting",
@@ -496,24 +530,33 @@ Test.Sim.function <- function(Arguments,Model,add.GxE=FALSE,
 }
 
 
-# ============= MQR : RUNNING ANALYSIS ====================
+# ============= Figure 4 (False Positives) ====================
 # Conditions to test
 Special <- "None"; N <- 10000; v.E <- 0.24; Interaction.Dir <- "+ve";
 hwe.p <- 1; min.grp.size <- 3; Pare.Encoding <- TRUE; Adjusted.for <- NULL;
 Type <- "Normal"; a <- NA  ; b <- NA; Skew.Dir <- "None"; b0 <- 25
 
-N <- c(250,500,1000,2000,5000)
-No.taus <- c(4,7,10,20)
-Ranges <- rbind(c(0.02,0.98),c(0.05,0.95),c(0.1,0.9),c(0.2,0.8))
-v.GxE <- seq(0,0.004,length.out=5)
+gamma_0 <- 0; gamma_1 <- 0; Rank.Multiplier <- 0; lambda <- NA; v.ParTot <- NA;
+f.Scaling.Method <- "None"
+
+N <- 200
+No.taus <- 10
+# tau.ranges <- c(0.05,0.95),c(0.1,0.9),c(0.2,0.8))
+tau.ranges <- c(0.05,0.95)
+v.GxE <- 0
 v.G_Buffer <- 0.1
-v.G <- 0.004
+Distributions <- c("Normal","Exponential")
+Scale <- c("Raw","RT")
+
+v.G <- c(0,0.004)
 MAF <- 0.3
-R <- 2000
-nodes <- 40
+
+Tests.To.Run <- "MCQR, MUQR, Unadjusted-MUQR, Classic-Levene, Brown-Forsythe, z.squared, GxE"
+R <- 10
+nodes <- 2
 batches <- split(1:R,cut(seq_along(1:R),nodes,labels=FALSE))
 Seeding <- 3435 # if you dont want to seed, set to NA
-Conditions <- data.table(expand.grid(N=N,No.taus=No.taus,Ranges=1:nrow(Ranges),v.GxE=v.GxE,
+Conditions <- data.table(expand.grid(v.G=v.G,Distributions=Distributions,Scale=Scale,
                                      stringsAsFactors=FALSE))
 # Timer.Matrix <- data.table(expand.grid(N=N,No.taus=No.taus,stringsAsFactors=FALSE))
 # Timer.List <- as.list(rep(NA,nrow(Timer.Matrix)))
@@ -540,7 +583,7 @@ for(i in 1:nrow(Conditions)){
   #                " STARTED AT: ", Sys.time(),". ETC = ",
   #                seconds_to_period(as.numeric(round(mean(Timer.List[[Timer.row]]))))))
   # }
-  if(is.null(Analysis.Results)){
+  if(is.null(Analysis.Timer)){
     print(paste0("ANALYSIS OF CONDITIONS ",i, " OF ", nrow(Conditions),
                  " STARTED AT: ", Sys.time()))
   } else {
@@ -554,24 +597,31 @@ for(i in 1:nrow(Conditions)){
                                                       (nrow(Conditions)-i+1)))),"]"))
   }
   i.ptm <- proc.time()
-  i.args <- cbind(N=Conditions[i,N],b0,v.G,v.E,v.GxE=Conditions[i,v.GxE],v.G_Buffer,
-                  Interaction.Dir,MAF,hwe.p,min.grp.size,Pare.Encoding,Type,a,b,Skew.Dir,
-                  Adjusted.for,
-                  No.taus=Conditions[i,No.taus],
-                  min.tau=Ranges[Conditions[i,Ranges],1],
-                  max.tau=Ranges[Conditions[i,Ranges],2])
+  if(Conditions[i,Distributions]=="Normal"){
+    Type <- "Normal"; Skew <- "None"; a <- b <- NULL
+  } else if(Conditions[i,Distributions]=="Exponential"){
+    Type <- "Exp"; a <- 0.1; Skew <- "Left"; b <- NULL
+  } else if(Conditions[i,Distributions]=="Skew-Normal"){
+    Type <- "Skew-N"; a <- 20; Skew <- "Right"; b <- NULL
+  }
+  i.args <- cbind(N,b0,v.G=Conditions[i,v.G],v.E,v.GxE,v.G_Buffer,
+                  Interaction.Dir,MAF,hwe.p,min.grp.size,Pare.Encoding,
+                  Scale=Conditions[i,Scale],
+                  Type,a,b,Skew.Dir,
+                  Adjusted.for, gamma_1, Rank.Multiplier, lambda, v.ParTot,
+                  Scaling.Method=f.Scaling.Method, No.taus, min.tau=tau.ranges[1],
+                  max.tau=tau.ranges[2],Tests.To.Run)
   # paste(names(Sim.function(Arguments=i.args[1,])),sep='',collapse='","')
   i.Results <- foreach(j=1:nodes, .combine=function(...) rbindlist(list(...)),
                        .multicombine=TRUE, .inorder=FALSE
   ) %dopar% {
-    library(data.table);library(quantreg)
     Reps <- batches[[j]]
     j.Results <- matrix(NA,nrow=length(Reps),ncol=length(cols),
                         dimnames=list(1:length(Reps),cols))
     for(l in 1:length(Reps)){
       l.s <- nrow(Conditions)*R*(i-1) + (Reps[l]-1) + Seeding
       # print(l.s)
-      j.Results[l,] <- Sim.function(Arguments=c(i.args[1,],Seed=l.s))
+      j.Results[l,] <- Sim.function(Arguments=c(i.args[1,],Seed=l.s),Mode="Scaling.Model.Fitting")
     }
     j.Results <- data.table(j.Results)
   }

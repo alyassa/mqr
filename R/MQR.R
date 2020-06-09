@@ -16,6 +16,10 @@ MQR <- function(datatable,y,g,covariates=NULL,tau=seq(0.05, 0.95, by=0.05),
   }
   DT <- data.table(model.frame(FML, datatable))
 
+  if(!mqr.method %in% c("CQR","UQR")){
+    error("mqr.method must be either 'CQR' or 'UQR'")
+  }
+
   if(mqr.method=="CQR"){
     ifelse(nrow(DT)<2000,{rq_meth <- "br"},
            ifelse(nrow(DT)<100000,{rq_meth <- "fn"},
