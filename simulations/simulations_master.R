@@ -1,6 +1,6 @@
 
 # ============= FUNCTIONS AND PACKAGES ====================
-library(foreach); library(doParallel); slibrary(sn); library(lubridate); library(rmutil);
+library(foreach); library(doParallel); library(sn); library(lubridate); library(rmutil);
 library(VGAM);library(emg)
 
 # So right now i've settelled on 6 Different methods to skew the distribution still
@@ -119,14 +119,11 @@ Generate_Genotypes <- function(N=10000,MAF=0.05,hwe.p=1,min.grp.size=5,
 
   if(hwe.p==1){
     # for no hwe distortions at all
-    #obs.G <- c(rep(aa,qq), rep(ab,pq), rep(bb,pp)) # perfect hwe
-    # Akram recommends doing sample instead
     obs.G <- sample(c(aa, ab, bb), N, prob=c(qq,pq,pp)/N, replace=TRUE)
   } else {
     # If hwe.p is specified then need to work backwards, from hwe.p to get chi value
     # at that hwe.p
     hwe.chi<- qchisq(hwe.p,1,lower.tail=FALSE)
-
     # obs.pq set to minimum (ie obs.pq=pq) and qq to max, ie pp will be minimized
     # Note this can mean that pp is bellow min.pp and even bellow 0 so need to take
     # precautions
@@ -140,15 +137,12 @@ Generate_Genotypes <- function(N=10000,MAF=0.05,hwe.p=1,min.grp.size=5,
       obs.qq <- sqrt((hwe.chi-((obs.pp-pp)^2)/pp)*pq*qq/(pq+qq))+qq
       obs.pq <- N-obs.pp-obs.qq
     }
-    #obs.G <- c(rep(aa,round(obs.qq)),rep(ab,round(obs.pq)),rep(bb,round(obs.pp)))
-    # Akram recommends doing sample instead
     obs.G <- sample(c(aa, ab, bb), N, prob=c(obs.qq,obs.pq,obs.pp)/N, replace=TRUE)
     rm(hwe.chi,obs.pp,obs.qq,obs.pq)
   }
   if(length(obs.G)<N){
     obs.G <- c(obs.G,rep(NA, N-length(obs.G)))
   }
-  #rm(p,q,aa,ab,bb,pp,pq,qq)
   return(obs.G)
 }
 
@@ -163,7 +157,6 @@ Sim.function <- function(Arguments,Model,Mode="Scaling.Model",
                          S.fun1=Generate_Genotypes,
                          S.fun2=Error.Distribution,
                          S.fun3=gamma_parameter_sampling){
-  Arguments
   if(!missing(Arguments)){
     N <- as.numeric(Arguments["N"]);
     MAF <- as.numeric(Arguments["MAF"]);
@@ -328,7 +321,7 @@ Sim.function <- function(Arguments,Model,Mode="Scaling.Model",
   } else {
     Notes <- NA
   }
-  MQR.Result <- c(MQR.Result,Notes)
+  MQR.Result <- c(MQR.Result,Notes=Notes)
   if(Mode=="Scaling.Model.Fitting"){
     return(MQR.Result)
   } else if(Mode=="Scaling.Adjustment"){
@@ -539,7 +532,7 @@ Type <- "Normal"; a <- NA  ; b <- NA; Skew.Dir <- "None"; b0 <- 25
 gamma_0 <- 0; gamma_1 <- 0; Rank.Multiplier <- 0; lambda <- NA; v.ParTot <- NA;
 f.Scaling.Method <- "None"
 
-N <- 200
+N <- 2000
 No.taus <- 10
 # tau.ranges <- c(0.05,0.95),c(0.1,0.9),c(0.2,0.8))
 tau.ranges <- c(0.05,0.95)
@@ -562,12 +555,20 @@ Conditions <- data.table(expand.grid(v.G=v.G,Distributions=Distributions,Scale=S
 # Timer.List <- as.list(rep(NA,nrow(Timer.Matrix)))
 # Timer.List <- as.list(rep(NA,length(N)*length(No.taus)))
 
-cols <- c("SNP_v.G","SNP_MAF","LN_Beta","LN_SE","LN_tval","LN_p.value","MUQR.Median_Beta",
+cols <- c("SNP_v.G","SNP_MAF","LN_Beta","LN_SE","LN_tval","LN_p.value","MCQR.Median_Beta",
+          "MCQR.Median_SE","MCQR.Median_tval","MCQR.Median_p.value","MCQR.MetaTau_Beta",
+          "MCQR.MetaTau_SE","MCQR.MetaTau_tval","MCQR.MetaTau_p.value","Successful.Taus",
+          "No.Successful.Taus","rq.method","boot.method","MCQR.TtC","MUQR.Median_Beta",
           "MUQR.Median_SE","MUQR.Median_tval","MUQR.Median_p.value","MUQR.MetaTau_Beta",
           "MUQR.MetaTau_SE","MUQR.MetaTau_tval","MUQR.MetaTau_p.value","MUQR.TtC",
-          "MCQR.Median_Beta","MCQR.Median_SE","MCQR.Median_tval","MCQR.Median_p.value",
-          "MCQR.MetaTau_Beta","MCQR.MetaTau_SE","MCQR.MetaTau_tval","MCQR.MetaTau_p.value",
-          "Successful.Taus","No.Successful.Taus","rq.method","boot.method","MCQR.TtC","Notes")
+          "Median_unadj_MUQR.Median_Beta","Median_unadj_MUQR.Median_SE",
+          "Median_unadj_MUQR.Median_tval","Median_unadj_MUQR.Median_p.value",
+          "Median_unadj_MUQR.MetaTau_Beta","Median_unadj_MUQR.MetaTau_SE",
+          "Median_unadj_MUQR.MetaTau_tval","Median_unadj_MUQR.MetaTau_p.value",
+          "Median_unadj_MUQR.TtC","Levene_Fval","Levene_df1","Levene_df2","Levene_p.value",
+          "Brown_Forsythe_Fval","Brown_Forsythe_df1","Brown_Forsythe_df2",
+          "Brown_Forsythe_p.value","z2_Beta","z2_SE","z2_tval","z2_p.value","GxE_Beta","GxE_SE",
+          "GxE_tval","GxE_p.value","Notes")
 
 Analysis.Timer <- NULL
 Analysis.Results <- list()
@@ -606,22 +607,23 @@ for(i in 1:nrow(Conditions)){
   }
   i.args <- cbind(N,b0,v.G=Conditions[i,v.G],v.E,v.GxE,v.G_Buffer,
                   Interaction.Dir,MAF,hwe.p,min.grp.size,Pare.Encoding,
-                  Scale=Conditions[i,Scale],
-                  Type,a,b,Skew.Dir,
-                  Adjusted.for, gamma_1, Rank.Multiplier, lambda, v.ParTot,
+                  Scale=Conditions[i,Scale],Type,a,b,Skew.Dir,
+                  Adjusted.for, gamma_0,gamma_1, Rank.Multiplier, lambda, v.ParTot,
                   Scaling.Method=f.Scaling.Method, No.taus, min.tau=tau.ranges[1],
                   max.tau=tau.ranges[2],Tests.To.Run)
   # paste(names(Sim.function(Arguments=i.args[1,])),sep='',collapse='","')
   i.Results <- foreach(j=1:nodes, .combine=function(...) rbindlist(list(...)),
                        .multicombine=TRUE, .inorder=FALSE
   ) %dopar% {
+    library(mqr); library(sn)
     Reps <- batches[[j]]
     j.Results <- matrix(NA,nrow=length(Reps),ncol=length(cols),
                         dimnames=list(1:length(Reps),cols))
     for(l in 1:length(Reps)){
       l.s <- nrow(Conditions)*R*(i-1) + (Reps[l]-1) + Seeding
       # print(l.s)
-      j.Results[l,] <- Sim.function(Arguments=c(i.args[1,],Seed=l.s),Mode="Scaling.Model.Fitting")
+      j.Results[l,] <- Sim.function(Arguments=c(i.args[1,],Seed=l.s),
+                                    Mode="Scaling.Model.Fitting")
     }
     j.Results <- data.table(j.Results)
   }
