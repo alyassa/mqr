@@ -644,3 +644,126 @@ stopCluster(cl)
 p <- "/home/../media/StoreB/arkan/Simulations_Quantile_Regression/Results/RData_Objects"
 save.image(file=file.path(p,"TestRangeNumber_Sims_July2_2019.RData"))
 
+
+# ============= Figure 6 (Synergistic/Antagonistic) ====================
+# Conditions to test
+Special <- "None"; N <- 10000; v.E <- 0.24; Interaction.Dir <- "+ve";
+hwe.p <- 1; min.grp.size <- 3; Pare.Encoding <- TRUE; Adjusted.for <- NULL;
+Type <- "Normal"; a <- NA  ; b <- NA; Skew.Dir <- "None"; b0 <- 25
+
+gamma_0 <- 0; gamma_1 <- 0; Rank.Multiplier <- 0; lambda <- NA; v.ParTot <- NA;
+f.Scaling.Method <- "None"
+
+N <- 2000
+No.taus <- 10
+# tau.ranges <- c(0.05,0.95),c(0.1,0.9),c(0.2,0.8))
+tau.ranges <- c(0.05,0.95)
+v.GxE <- seq(0,0.004,length.out=10)
+v.G_Buffer <- 0.1
+Distributions <- c("Normal","Exponential")
+Scale <- c("Raw","RT")
+
+v.G <- c(0,0.004)
+MAF <- 0.3
+
+Tests.To.Run <- "MCQR, MUQR, Unadjusted-MUQR, Classic-Levene, Brown-Forsythe, z.squared, GxE"
+R <- 10
+nodes <- 2
+batches <- split(1:R,cut(seq_along(1:R),nodes,labels=FALSE))
+Seeding <- 3435 # if you dont want to seed, set to NA
+Conditions <- data.table(expand.grid(v.G=v.G,Distributions=Distributions,Scale=Scale,
+                                     stringsAsFactors=FALSE))
+# Timer.Matrix <- data.table(expand.grid(N=N,No.taus=No.taus,stringsAsFactors=FALSE))
+# Timer.List <- as.list(rep(NA,nrow(Timer.Matrix)))
+# Timer.List <- as.list(rep(NA,length(N)*length(No.taus)))
+
+cols <- c("SNP_v.G","SNP_MAF","LN_Beta","LN_SE","LN_tval","LN_p.value","MCQR.Median_Beta",
+          "MCQR.Median_SE","MCQR.Median_tval","MCQR.Median_p.value","MCQR.MetaTau_Beta",
+          "MCQR.MetaTau_SE","MCQR.MetaTau_tval","MCQR.MetaTau_p.value","Successful.Taus",
+          "No.Successful.Taus","rq.method","boot.method","MCQR.TtC","MUQR.Median_Beta",
+          "MUQR.Median_SE","MUQR.Median_tval","MUQR.Median_p.value","MUQR.MetaTau_Beta",
+          "MUQR.MetaTau_SE","MUQR.MetaTau_tval","MUQR.MetaTau_p.value","MUQR.TtC",
+          "Median_unadj_MUQR.Median_Beta","Median_unadj_MUQR.Median_SE",
+          "Median_unadj_MUQR.Median_tval","Median_unadj_MUQR.Median_p.value",
+          "Median_unadj_MUQR.MetaTau_Beta","Median_unadj_MUQR.MetaTau_SE",
+          "Median_unadj_MUQR.MetaTau_tval","Median_unadj_MUQR.MetaTau_p.value",
+          "Median_unadj_MUQR.TtC","Levene_Fval","Levene_df1","Levene_df2","Levene_p.value",
+          "Brown_Forsythe_Fval","Brown_Forsythe_df1","Brown_Forsythe_df2",
+          "Brown_Forsythe_p.value","z2_Beta","z2_SE","z2_tval","z2_p.value","GxE_Beta","GxE_SE",
+          "GxE_tval","GxE_p.value","Notes")
+
+Analysis.Timer <- NULL
+Analysis.Results <- list()
+cl <- makeCluster(nodes)
+registerDoParallel(cl)
+for(i in 1:nrow(Conditions)){
+  # Timer.row <- Timer.Matrix[,which(Conditions[i,N]==N & Conditions[i,No.taus]==No.taus)]
+  # if(length(Timer.List[[Timer.row]])==1 & is.na(Timer.List[[Timer.row]])){
+  #   print(paste0("ANALYSIS OF CONDITIONS ",i, " OF ",nrow(Conditions),
+  #                " STARTED AT: ", Sys.time()))
+  # } else {
+  #   print(paste0("ANALYSIS OF CONDITIONS ",i, " OF ",nrow(Conditions),
+  #                " STARTED AT: ", Sys.time(),". ETC = ",
+  #                seconds_to_period(as.numeric(round(mean(Timer.List[[Timer.row]]))))))
+  # }
+  if(is.null(Analysis.Timer)){
+    print(paste0("ANALYSIS OF CONDITIONS ",i, " OF ", nrow(Conditions),
+                 " STARTED AT: ", Sys.time()))
+  } else {
+    print(paste0("ANALYSIS OF CONDITIONS ",i, " OF ", nrow(Conditions),
+                 " STARTED AT: ", Sys.time(),". ETC = ",
+                 seconds_to_period(as.numeric(round(mean(Analysis.Timer)*
+                                                      (nrow(Conditions)-i+1))))," [",
+                 seconds_to_period(as.numeric(round(min(Analysis.Timer)*
+                                                      (nrow(Conditions)-i+1))))," - ",
+                 seconds_to_period(as.numeric(round(max(Analysis.Timer)*
+                                                      (nrow(Conditions)-i+1)))),"]"))
+  }
+  i.ptm <- proc.time()
+  if(Conditions[i,Distributions]=="Normal"){
+    Type <- "Normal"; Skew <- "None"; a <- b <- NULL
+  } else if(Conditions[i,Distributions]=="Exponential"){
+    Type <- "Exp"; a <- 0.1; Skew <- "Left"; b <- NULL
+  } else if(Conditions[i,Distributions]=="Skew-Normal"){
+    Type <- "Skew-N"; a <- 20; Skew <- "Right"; b <- NULL
+  }
+  i.args <- cbind(N,b0,v.G=Conditions[i,v.G],v.E,v.GxE,v.G_Buffer,
+                  Interaction.Dir,MAF,hwe.p,min.grp.size,Pare.Encoding,
+                  Scale=Conditions[i,Scale],Type,a,b,Skew.Dir,
+                  Adjusted.for, gamma_0,gamma_1, Rank.Multiplier, lambda, v.ParTot,
+                  Scaling.Method=f.Scaling.Method, No.taus, min.tau=tau.ranges[1],
+                  max.tau=tau.ranges[2],Tests.To.Run)
+  # paste(names(Sim.function(Arguments=i.args[1,])),sep='',collapse='","')
+  i.Results <- foreach(j=1:nodes, .combine=function(...) rbindlist(list(...)),
+                       .multicombine=TRUE, .inorder=FALSE
+  ) %dopar% {
+    library(mqr); library(sn)
+    Reps <- batches[[j]]
+    j.Results <- matrix(NA,nrow=length(Reps),ncol=length(cols),
+                        dimnames=list(1:length(Reps),cols))
+    for(l in 1:length(Reps)){
+      l.s <- nrow(Conditions)*R*(i-1) + (Reps[l]-1) + Seeding
+      # print(l.s)
+      j.Results[l,] <- Sim.function(Arguments=c(i.args[1,],Seed=l.s),
+                                    Mode="Scaling.Model.Fitting")
+    }
+    j.Results <- data.table(j.Results)
+  }
+  i.Results <- cbind(Conditions[i,],i.Results)
+  Analysis.Results[[i]] <- i.Results
+  i.etm <- proc.time()-i.ptm
+  # if(length(Timer.List[[Timer.row]])==1 & is.na(Timer.List[[Timer.row]])){
+  #   Timer.List[[Timer.row]] <- i.etm[[3]]
+  # } else {
+  #   Timer.List[[Timer.row]] <- c(Timer.List[[Timer.row]],i.etm[[3]])
+  # }
+  Analysis.Timer <- c(Analysis.Timer,i.etm[[3]])
+  print(paste0("ANALYSIS OF CONDITIONS ",i, " OF ",nrow(Conditions),
+               " COMPLETED IN ", seconds_to_period(round(i.etm[[3]]))))
+}
+stopCluster(cl)
+
+p <- "/home/../media/StoreB/arkan/Simulations_Quantile_Regression/Results/RData_Objects"
+save.image(file=file.path(p,"TestRangeNumber_Sims_July2_2019.RData"))
+
+
