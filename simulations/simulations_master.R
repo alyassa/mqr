@@ -522,7 +522,6 @@ Test.Sim.function <- function(Arguments,Model,add.GxE=FALSE,
   return(Results)
 }
 
-
 # ============= Figure 4 (False Positives) ====================
 # Conditions to test
 Special <- "None"; N <- 10000; v.E <- 0.24; Interaction.Dir <- "+ve";

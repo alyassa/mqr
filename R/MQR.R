@@ -1,5 +1,5 @@
 
-MQR <- function(datatable,y,g,covariates=NULL,tau=seq(0.05, 0.95, by=0.05),
+MQR <- function(datatable,y,g,covariates=NULL,tau=seq(0.05, 0.95, by=0.1),
                 mqr.method="UQR",boot.m="mcmb",boot.R=200,seed=31371,enable.dither=TRUE,
                 Univariable=TRUE,fitOLS=TRUE,Fit_Median_Unadjusted=FALSE){
   # datatable=DT;y="response";g="x";tau=seq(0.05,0.95,length.out=10);
