@@ -16,3 +16,26 @@ c("N","EAF","LN_Beta","LN_SE","LN_tval","LN_p.value","MCQR.Median_Beta","MCQR.Me
 c("N","EAF","LN_Beta","LN_SE","LN_tval","LN_p.value","MUQR.Median_Beta","MUQR.Median_SE",
   "MUQR.Median_tval","MUQR.Median_p.value","MUQR.MetaTau_Beta","MUQR.MetaTau_SE",
   "MUQR.MetaTau_tval","MUQR.MetaTau_p.value","MUQR.TtC","Notes")
+
+
+
+n <- 1000
+taus <- seq(0.1, 0.9, 0.1)
+R <- 1000
+
+p <- NULL
+for(i in 1:R){
+  prs <- rnorm(n, mean=0, sd=1)
+  noise <- rnorm(n, mean=0, sd=1)
+  y <- prs + noise
+  myDT <- data.table(score=prs,outcome=y)
+  myDT
+  # p <- c(p,MQR(DT,y="outcome",g="prs",tau=taus,mqr.method="CQR")["MUQR.MetaTau_p.value"])
+  MQR(datatable=myDT,y="outcome",g="score",tau=taus,
+      mqr.method="CQR")["MCQR.MetaTau_p.value"]
+  myDT
+  # p <- c(p,MQR(DT,y="outcome",g="prs",tau=taus,mqr.method="CQR")["MCQR.MetaTau_p.value"])
+}
+sum(p<0.05)/1000
+
+summary(p)

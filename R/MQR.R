@@ -200,6 +200,7 @@ MQR <- function(datatable,y,g,covariates=NULL,tau=seq(0.05, 0.95, by=0.1),
                  Results,Successful.Taus=paste(successful.taus,sep="",collapse=","),
                  No.Successful.Taus=length(successful.taus),rq.method=rq_meth,boot.method=bs.M,
                  MCQR.TtC=g.etm[[3]],Notes=Notes)
+    set.seed(NULL)
     return(Results)
 
   } else if (mqr.method=="UQR"){
@@ -316,6 +317,7 @@ MQR <- function(datatable,y,g,covariates=NULL,tau=seq(0.05, 0.95, by=0.1),
     }
     Results <- c(N=nrow(DT),EAF=sum(DT[[g]])/(2*nrow(DT)),LN.Results,MEDIAN.Result,Results,
                  MUQR.TtC=g.etm[[3]],Notes=Notes)
+    set.seed(NULL)
     return(Results)
   }
 }
