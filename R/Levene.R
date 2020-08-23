@@ -16,7 +16,7 @@ Levene <- function(datatable, y, g, covariates=NULL, method="Brown-Forsythe",
     DT[,y:=DT[[y]]]
   } else {
     FML.r <- paste(y, covs, sep=" ~ ")
-    LMOD <- lm(FML,DT)
+    LMOD <- lm(FML.r,DT)
     DT[,y:=resid(LMOD)]
   }
 

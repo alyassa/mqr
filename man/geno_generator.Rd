@@ -24,7 +24,7 @@ geno_generator(N=10000,MAF=0.05,hwe.p=1,min.grp.size=5,Pare.Encoding=TRUE)
 A vector of length N, containing sample genotypes.
 }
 \references{
-Paré, G., Cook, N. R., Ridker, P. M., & Chasman, D. I. (2010). On the use of variance per genotype as a tool to identify quantitative trait interaction effects: a report from the Women's Genome Health Study. PLoS Genetics, 6(6), e1000981. http://doi.org/10.1371/journal.pgen.1000981
+[1] Paré, G., Cook, N. R., Ridker, P. M., & Chasman, D. I. (2010). On the use of variance per genotype as a tool to identify quantitative trait interaction effects: a report from the Women's Genome Health Study. PLoS Genetics, 6(6), e1000981. http://doi.org/10.1371/journal.pgen.1000981
 }
 \author{
 Arkan Abadi and Akram Alyass

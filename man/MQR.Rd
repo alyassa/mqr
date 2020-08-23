@@ -14,11 +14,11 @@
   \item{g}{Name (character or string) of the genotype variable (e.g. SNP)}
   \item{covariates}{Name (character or string) of any additional variables (covariates) to fit the model. NOTE : Additional covariates will impact the genotype results only in CQR. UQR additional covariates will have little impact. Default is NULL}
   \item{tau}{quantiles percentiles at which to fit UQR and CQR models. Should be between 0 and 1. Should be at least 3 quantiles. Selecting too many quantiles may result in overfitting. Default is every 0.05 quantile from 0.05 to 0.95 (i.e. `seq(0.05,0.95,by=0.05)`).}
-    \item{mqr.method}{Specify either "UQR" or "CQR".}
-    \item{boot.m}{Bootstrapping method for CQR. Default is "mcmb". See `summary.rq.boot` details for additional options but use these with caution as they may increase false positive rate.}
-    \item{boot.R}{Number of bootstrap replicates for CQR. Default is 200. This number has been found to empirically adequate and larger numbers increase compute time exponentially.}
-    \item{seed}{Set seed to ensure reproducibility and proper bootsrap sampling.}
-    \item{enable.dither}{UQR and CQR can sometimes fail to resolve quantiles when the response contains many numerically identical values. Dithering introduces small amount of noise to the response. This is similar to `gitter` except the noise is all right-sided. During testing dithering had minimal impact on estimates, improved computation speed, and decreased failiure rate. Default is `TRUE`}
+  \item{mqr.method}{Specify either "UQR" or "CQR".}
+  \item{boot.m}{Bootstrapping method for CQR. Default is "mcmb". See `summary.rq.boot` details for additional options but use these with caution as they may increase false positive rate.}
+  \item{boot.R}{Number of bootstrap replicates for CQR. Default is 200. This number has been found to empirically adequate and larger numbers increase compute time exponentially.}
+  \item{seed}{Set seed to ensure reproducibility and proper bootsrap sampling.}
+  \item{enable.dither}{UQR and CQR can sometimes fail to resolve quantiles when the response contains many numerically identical values. Dithering introduces small amount of noise to the response. This is similar to `gitter` except the noise is all right-sided. During testing dithering had minimal impact on estimates, improved computation speed, and decreased failiure rate. Default is `TRUE`}
 }
 
 \details{
