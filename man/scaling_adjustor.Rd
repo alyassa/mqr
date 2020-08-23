@@ -1,5 +1,5 @@
-\name{Scaling.Adjustor}
-\alias{Scaling.Adjustor}
+\name{scaling_adjustor}
+\alias{scaling_adjustor}
 %- Also NEED an '\alias' for EACH other topic documented here.
 \title{
 Adjusting for Scaling
@@ -8,7 +8,7 @@ Adjusting for Scaling
 This functions fits a model to estimate scaling (i.e. correlation between variant quantile-wideining effects and marginal effects). It then computes the estimated quantile-widening effects from the marginal effect of each variant and finally deducts this estimated quantile-widening effect from the actual quantile-widening effect to produce scaling-adjusting quantile widening effects for each variant.
 }
 \usage{
-Scaling.Adjustor(FML, data, weights, model, response, predictor, method = "Median_rq")
+scaling_adjustor(FML, data, weights, model, response, predictor, method = "Median_rq")
 }
 %- maybe also 'usage' for other objects documented here.
 \arguments{

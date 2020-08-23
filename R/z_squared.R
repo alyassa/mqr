@@ -1,4 +1,4 @@
-z.squared <- function(datatable, y, g,covariates=NULL){
+z_squared <- function(datatable, y, g,covariates=NULL){
   #datatable=Data; tau=Taus; y="BMI"; g=SNPs[j]; Adjusted.for=NA
   #covariates=c(covariates,"STUDY");
   #fun1=RIF.Transformation; fun2=cov.RIF;fun3=MetaReg.function
