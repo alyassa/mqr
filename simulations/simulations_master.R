@@ -123,7 +123,7 @@ Generate_Genotypes <- function(N=10000,MAF=0.05,hwe.p=1,min.grp.size=5,
   } else {
     # If hwe.p is specified then need to work backwards, from hwe.p to get chi value
     # at that hwe.p
-    hwe.chi<- qchisq(hwe.p,1,lower.tail=FALSE)
+    hwe.chi <- qchisq(hwe.p,1,lower.tail=FALSE)
     # obs.pq set to minimum (ie obs.pq=pq) and qq to max, ie pp will be minimized
     # Note this can mean that pp is bellow min.pp and even bellow 0 so need to take
     # precautions
@@ -151,6 +151,194 @@ gamma_parameter_sampling <- function(y){
   s <- (1-var(y))*exp(y)/(gamma_mean+y)
   y <- sapply(1:length(y),function(x) rgamma(1,shape=(gamma_mean+y[x])/s[x],scale=s[x]))
   return(y)
+}
+
+data_generator <- function(Arguments,Model,Mode="Scaling.Model",
+                           S.fun1=Generate_Genotypes,
+                           S.fun2=Error.Distribution,
+                           S.fun3=gamma_parameter_sampling){
+  if(!missing(Arguments)){
+    N <- as.numeric(Arguments["N"]);
+    MAF <- as.numeric(Arguments["MAF"]);
+    b0 <- as.numeric(Arguments["b0"]);
+    v.G_Buffer <- as.numeric(Arguments["v.G_Buffer"]);
+    v.G <- as.numeric(Arguments["v.G"]);
+    v.E <- as.numeric(Arguments["v.E"]);
+    v.GxE <- as.numeric(Arguments["v.GxE"]);
+    Interaction.Dir <- Arguments["Interaction.Dir"];
+    hwe.p <- as.numeric(Arguments["hwe.p"]);
+    min.grp.size <- as.numeric(Arguments["min.grp.size"]);
+    Pare.Encoding <- Arguments["Pare.Encoding"];
+    Type <- Arguments["Type"];
+    a <- as.numeric(Arguments["a"]); b <- as.numeric(Arguments["b"]);
+    Skew.Dir <- Arguments["Skew.Dir"];
+    gamma_0 <- as.numeric(Arguments["gamma_0"]);
+    gamma_1 <- as.numeric(Arguments["gamma_1"]);
+    Scaling.Method <- Arguments["Scaling.Method"]
+    lambda <- as.numeric(Arguments["lambda"]);
+    alpha <- as.numeric(Arguments["alpha"]);
+    v.ParTot <- as.numeric(Arguments["v.ParTot"]);
+    Rank.Multiplier <- as.numeric(Arguments["Rank.Multiplier"]);
+    Seed <- as.numeric(Arguments["Seed"]);
+    Adjusted.for <- Arguments["Adjusted.for"];
+    No.taus <- as.numeric(Arguments["No.taus"]);
+    min.tau <- as.numeric(Arguments["min.tau"]);
+    max.tau <- as.numeric(Arguments["max.tau"]);
+    Scale <- Arguments["Scale"];
+    method <- Arguments["method"];
+    Tests.To.Run <- Arguments["Tests.To.Run"];
+  }
+  if(!is.na(Seed)){
+    set.seed(Seed)
+  }
+  # browser()
+  b1.G <- sample(c(-1,1),1,prob=c(0.5,0.5))*sqrt(v.G/(2*MAF*(1-MAF)))
+  b2.E <- sqrt(v.E)
+  b3.GxE <- sign(b1.G)*sqrt(v.GxE/(2*MAF*(1-MAF)))
+  b4.Buffer <- sqrt(v.G_Buffer-v.G*(1+gamma_1)-v.GxE)
+  v.combo <- v.G_Buffer + v.E
+  if(is.na(v.ParTot)){
+    v.ParTot <- 1
+  }
+  if(v.combo>1){
+    stop("Variance components add up to more than 1 ")
+  }
+  if(v.ParTot-v.combo<0){
+    stop("Total variance of parameters (v.ParTot) is less than sum of parameters variances (v.G, v.E, v.GxE). Increase v.ParTot so v.ParTot >= v.G + v.E + v.GxE")
+  }
+  G <- S.fun1(N,MAF,hwe.p,min.grp.size,Pare.Encoding)
+  E <- rnorm(N)
+  err <- S.fun2(N,Type,a,b,Skew.Dir)
+  C <- rnorm(N)
+  if(Interaction.Dir=="+ve"){
+    b3.Dir <- 1
+  } else if (Interaction.Dir=="-ve"){
+    b3.Dir <- -1
+  }
+
+  pre_y <- b1.G*G + b2.E*E + b3.Dir*b3.GxE*G*E + (gamma_0 + gamma_1*b1.G)*G*err +
+    sqrt(v.ParTot-v.combo)*err + b4.Buffer*C
+
+  DT <- cbind(pre_y,G,E)
+  DT <- data.table(DT)
+  setnames(DT,c("pre_y","G","E"))
+  if(Scaling.Method=="None"){
+    DT[,y:=b0 + pre_y]
+  } else if(Scaling.Method=="Rank.Multiplier"){
+    DT <- DT[order(pre_y)]
+    Multiplier <- seq(1,1+Rank.Multiplier,length.out=N)
+    DT[,Rank_Multiplier:=Multiplier[order(Multiplier)]]
+    DT[,y:=pre_y*Rank_Multiplier]
+    DT[,y:=b0 + scale(y)]
+  } else if (Scaling.Method=="EGM.Tranformation"){
+    if(lambda!=0){
+      remgtransform <- function(x,lambda){qemg((rank(x,na.last="keep")-0.5)/sum(!is.na(x)),
+                                               mu=0,sigma=1,lambda=lambda)}
+      DT[,y:=remgtransform(pre_y,lambda=lambda)]
+    } else {
+      DT[,y:=pre_y]
+    }
+    DT[,y:=b0 + scale(y)]
+  } else if (Scaling.Method=="SN.Tranformation"){
+    rskewtransform <- function(x,alpha){qsn((rank(x,na.last="keep")-0.5)/sum(!is.na(x)),
+                                            xi=0,omega=1,alpha=alpha)}
+    sn_y <- rskewtransform(y,alpha=4)
+    DT[,y:=rskewnransform(pre_y,alpha=alpha)]
+    DT[,y:=b0 + scale(y)]
+  } else if(Scaling.Method=="gamma_parameter"){
+    DT[,y:=S.fun3(pre_y)]
+    DT[,y:=b0 + scale(y)]
+  }
+
+  if(Scale=="log"){
+    DT[,sc_pre_y:=log(pre_y + b0)]
+    DT[,sc_y:=log(y)]
+  } else if(Scale=="RT"){
+    DT[,sc_pre_y:=rntransform(pre_y)]
+    DT[,sc_y:=rntransform(y)]
+  } else {
+    DT[,sc_pre_y:=pre_y]
+    DT[,sc_y:=y]
+  }
+
+  DT[,pheno:=sc_y]
+  DT[,geno:=G]
+  if(Mode=="Data.Generator"){
+    return(DT)
+  }
+
+  Taus <- seq(min.tau,max.tau,length.out=No.taus)
+  MQR.Result <- c(SNP_v.G=v.G,SNP_MAF=MAF)
+  Notes <- NULL
+  if(grepl("MCQR",Tests.To.Run)){
+    temp <- MQR(DT,y="pheno", g="geno",tau=Taus,mqr.method="CQR")
+    if(!is.na(temp["Notes"])){
+      Notes <- c(Notes,temp["Notes"])
+    }
+    temp <- temp[3:(length(temp)-1)]
+    MQR.Result <- c(MQR.Result,temp)
+  }
+  if(grepl("MUQR",Tests.To.Run)){
+    if(any(grepl("LN_Beta",names(MQR.Result)))){
+      temp <- MQR(DT,y="pheno", g="geno",tau=Taus,mqr.method="UQR",fitOLS=FALSE)
+    } else {
+      MQR(DT,y="pheno", g="geno",tau=Taus,mqr.method="UQR")
+    }
+    if(!is.na(temp["Notes"])){
+      Notes <- c(Notes,temp["Notes"])
+    }
+    temp <- temp[3:(length(temp)-1)]
+    MQR.Result <- c(MQR.Result,temp)
+  }
+  if(grepl("Unadjusted-MUQR",Tests.To.Run)){
+    temp <- MQR(DT,y="pheno", g="geno",tau=Taus,mqr.method="UQR",Fit_Median_Unadjusted=TRUE,
+                fitOLS=FALSE)
+    names(temp) <- paste0("Median_unadj_",names(temp))
+    if(!is.na(temp["Notes"])){
+      Notes <- c(Notes,temp["Notes"])
+    }
+    temp <- temp[3:(length(temp)-1)]
+    MQR.Result <- c(MQR.Result,temp)
+  }
+  if(grepl("Classic-Levene",Tests.To.Run)){
+    MQR.Result <- c(MQR.Result,Levene(DT,y="pheno", g="geno",method="Classic-Levene"))
+  }
+  if(grepl("Brown-Forsythe",Tests.To.Run)){
+    temp <- Levene(DT,y="pheno", g="geno",method="Brown-Forsythe")
+    names(temp) <- gsub("Levene","Brown_Forsythe",names(temp))
+    MQR.Result <- c(MQR.Result,temp)
+  }
+  if(grepl("z.squared",Tests.To.Run)){
+    MQR.Result <- c(MQR.Result,z.squared(DT,y="pheno", g="geno"))
+  }
+  if(grepl("GxE",Tests.To.Run)){
+    lm1 <- coef(summary(lm(pheno~geno*E,data=DT)))
+    MQR.Result <- c(MQR.Result,GxE_Beta=lm1["geno:E",1],GxE_SE=lm1["geno:E",2],
+                    GxE_tval=lm1["geno:E",3],GxE_p.value=lm1["geno:E",4])
+  }
+  if(!is.null(Notes)){
+    Notes <- paste(Notes,sep="",collapse=",")
+  } else {
+    Notes <- NA
+  }
+  MQR.Result <- c(MQR.Result,Notes=Notes)
+  if(Mode=="Scaling.Model.Fitting"){
+    return(MQR.Result)
+  } else if(Mode=="Scaling.Adjustment"){
+    if(grepl("MCQR",Tests.To.Run)){
+      return(c(MQR.Result,
+               as.matrix(Scaling.Adjustor(data=data.table(t(MQR.Result)),model=Model,
+                                          response="MCQR.MetaTau_Beta",
+                                          predictor="MCQR.Median_Beta",method=method))[1,]))
+    } else if(grepl("MUQR",Tests.To.Run)){
+      return(c(MQR.Result,
+               as.matrix(Scaling.Adjustor(data=data.table(t(MQR.Result)),model=Model,
+                                          response="MUQR.MetaTau_Beta",
+                                          predictor="MUQR.Median_Beta",method=method))[1,]))
+    } else (
+      warning("You did not specify MCQR or MUQR in 'Test.To.Run' argument so no scaling adjustment can be applied")
+    )
+  }
 }
 
 Sim.function <- function(Arguments,Model,Mode="Scaling.Model",

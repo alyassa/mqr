@@ -29,12 +29,8 @@ for(i in 1:R){
   noise <- rnorm(n, mean=0, sd=1)
   y <- prs + noise
   myDT <- data.table(score=prs,outcome=y)
-  myDT
-  # p <- c(p,MQR(DT,y="outcome",g="prs",tau=taus,mqr.method="CQR")["MUQR.MetaTau_p.value"])
-  MQR(datatable=myDT,y="outcome",g="score",tau=taus,
-      mqr.method="CQR")["MCQR.MetaTau_p.value"]
-  myDT
-  # p <- c(p,MQR(DT,y="outcome",g="prs",tau=taus,mqr.method="CQR")["MCQR.MetaTau_p.value"])
+  # p <- c(p,MQR(myDT,y="outcome",g="prs",tau=taus,mqr.method="CQR")["MUQR.MetaTau_p.value"])
+  p <- c(p,MQR(myDT,y="outcome",g="prs",tau=taus,mqr.method="CQR")["MCQR.MetaTau_p.value"])
 }
 sum(p<0.05)/1000
 
