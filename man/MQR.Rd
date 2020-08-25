@@ -27,6 +27,7 @@
 \value{A vector with 4 elements containg the MQR estimate, standard error, t-value and p-value for the effects of genotype g on response y.}
 \references{
 [1] Koenker, R. W. (2005). Quantile Regression, Cambridge U. Press.
+
 [2] Firpo, S., Fortin, N. M., & Lemieux, T. (2009). Unconditional quantile regressions. Econometrica. http://doi.org/10.3982/ECTA6822
 }
 \author{
