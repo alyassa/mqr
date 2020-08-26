@@ -12,8 +12,8 @@
   \item{y}{Name (character or string) of the continuous response variable}
   \item{g}{Name (character or string) of the genotype variable (e.g. SNP)}
   \item{covariates}{Name (character or string) of any additional variables (covariates) to fit the model. NOTE : here linear model will be fit with covariates and levene test will be performed on residuals from the linear model}
-  \item{method}{Two options are implemented, "Classic-Levene"  and "Brown-Forsythe" modification. The former is known to be prone to elevated type 1 error when response is skewed while the latter is robust to skew.
-  \item{log.p}{return log of p-value?}}
+  \item{method}{Two options are implemented, "Classic-Levene"  and "Brown-Forsythe" modification. The former is known to be prone to elevated type 1 error when response is skewed while the latter is robust to skew.}
+  \item{log.p}{return log of p-value?}
 }
 
 \details{
