@@ -15,7 +15,7 @@ Imports:
   MASS (>= 7.3-51.4),
   metafor(>= 2.0)
 Depends: 
-  data.table (>= 1.12.2),
+  data.table (>= 1.10.4.3),
   quantreg (>= 5.39),
   MASS (>= 7.3-51.4),
   metafor(>= 2.0)
