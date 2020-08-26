@@ -16,7 +16,7 @@ Imports:
   metafor(>= 2.0)
 Depends: 
   data.table (>= 1.12.2),
-  quantreg (= 5.39),
+  quantreg (== 5.39),
   MASS (>= 7.3-51.4),
   metafor(>= 2.0)
 RoxygenNote: 6.1.1
